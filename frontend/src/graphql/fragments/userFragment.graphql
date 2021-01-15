@@ -1,0 +1,4 @@
+fragment user on IUser {
+  _id
+  username
+}

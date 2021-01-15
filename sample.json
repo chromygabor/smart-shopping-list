@@ -1,0 +1,41 @@
+{
+  "errors": [
+    {
+      "message": "Argument Validation Error",
+      "locations": [
+        {
+          "line": 2,
+          "column": 3
+        }
+      ],
+      "path": ["register"],
+      "extensions": {
+        "code": "INTERNAL_SERVER_ERROR",
+        "exception": {
+          "validationErrors": [
+            {
+              "target": {
+                "username": "bob",
+                "password": "123",
+                "repassword": "1"
+              },
+              "value": "123",
+              "property": "password",
+              "children": [],
+              "constraints": {
+                "isTheSameAs": "PASSWORD_MISMATCH"
+              }
+            }
+          ],
+          "stacktrace": [
+            "Error: Argument Validation Error",
+            "    at Object.validateArg (/D/Development/shopping-list/backend/node_modules/type-graphql/dist/resolvers/validate-arg.js:25:15)",
+            "    at processTicksAndRejections (internal/process/task_queues.js:93:5)",
+            "    at async Promise.all (index 0)"
+          ]
+        }
+      }
+    }
+  ],
+  "data": null
+}
