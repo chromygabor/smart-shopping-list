@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+const nextTranslate = require("next-translate");
+
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
 
-module.exports = {
+module.exports = nextTranslate({
   /**
    * Custom Webpack Config
    * https://nextjs.org/docs/api-reference/next.config.js/custom-webpack-config
    */
-  webpack(config, options) {
+  webpack: (config, options) => {
     const { dev, isServer } = options;
 
     // Do not run type checking twice:
@@ -17,4 +19,4 @@ module.exports = {
 
     return config;
   },
-};
+});

@@ -1,20 +1,17 @@
-import React from "react";
 import Avatar from "@material-ui/core/Avatar";
-import Button from "@material-ui/core/Button";
-import CssBaseline from "@material-ui/core/CssBaseline";
-import TextField from "@material-ui/core/TextField";
-import Link from "../components/Link";
 import Box from "@material-ui/core/Box";
-import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
-import Typography from "@material-ui/core/Typography";
-import { makeStyles } from "@material-ui/core/styles";
+import Button from "@material-ui/core/Button";
 import Container from "@material-ui/core/Container";
+import CssBaseline from "@material-ui/core/CssBaseline";
+import { makeStyles } from "@material-ui/core/styles";
+import Typography from "@material-ui/core/Typography";
+import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
+import useTranslation from "next-translate/useTranslation";
+import React, { FormEvent, useState } from "react";
 import Copyright from "../components/Copyright";
+import TextField from "../components/form/TextField";
+import { useForm } from "../components/form/useForm";
 import { useRegisterMutation } from "../generated/graphql";
-import { Form, Formik } from "formik";
-import { useRouter } from "next/router";
-import { useField } from "formik";
-import { useFormik } from "formik";
 
 const useStyles = makeStyles((theme) => ({
   paper: {
@@ -55,36 +52,41 @@ export interface ISignInProps {}
 
 const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
   const classes = useStyles();
+  const { t } = useTranslation("common");
 
   const [register, r] = useRegisterMutation({ errorPolicy: "all" });
-  const router = useRouter();
 
-  const formik = useFormik({
+  const form = useForm<{
+    email: string;
+    password: string;
+    repassword: string;
+  }>({
     initialValues: {
       email: "",
       password: "",
       repassword: "",
     },
-    onSubmit: async (values, { setStatus, setErrors }) => {
-      //alert(JSON.stringify(values, null, 2));
-      try {
-        const res = await register({ variables: values });
-        console.log("res", res);
-        if (!res.data) {
-          const mappedErrors = fromServerError(res.errors);
-          setErrors(mappedErrors.fieldErrors);
-          setStatus(mappedErrors.errors);
-        }
-      } catch (error) {
-        const errors = error.graphQLErrors;
-        const mappedErrors = fromServerError(errors);
+    handleSubmit: async (e: FormEvent) => {
+      e.preventDefault();
+      console.log("HandleSubmit");
 
-        // const mappedErrors = fromServerError(errors);
-        // console.log(mappedErrors);
-        setErrors(mappedErrors.fieldErrors);
-        setStatus(mappedErrors.errors);
-      }
+      // try {
+      //   const res = await register({ variables: values });
+      //   console.log("res", res);
+      //   if (!res.data) {
+      //     const mappedErrors = fromServerError(res.errors);
+      //     setErrors(mappedErrors);
+      //   }
+      // } catch (error) {
+      //   const errors = error.graphQLErrors;
+      //   const mappedErrors = fromServerError(errors);
+
+      //   // const mappedErrors = fromServerError(errors);
+      //   // console.log(mappedErrors);
+      //   setErrors(mappedErrors.fieldErrors);
+      // }
     },
+    defaultFieldVariant: "outlined",
   });
 
   return (
@@ -97,15 +99,11 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
         <Typography component="h1" variant="h5">
           Sign up
         </Typography>
-        <form
-          className={classes.form}
-          noValidate
-          onSubmit={formik.handleSubmit}
-        >
-          {formik.status ? <Typography>{formik.status}</Typography> : null}
+        <form className={classes.form} noValidate onSubmit={form.handleSubmit}>
+          {/* {errors.errors ? <Typography>{errors.errors}</Typography> : null} */}
 
           <TextField
-            variant="outlined"
+            form={form}
             margin="normal"
             required
             fullWidth
@@ -114,12 +112,8 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
             name="email"
             autoComplete="email"
             autoFocus
-            onChange={formik.handleChange}
-            value={formik.values.email}
-            error={formik.errors.email ? true : false}
-            helperText={formik.errors.email}
           />
-          <TextField
+          {/* <TextField
             variant="outlined"
             margin="normal"
             required
@@ -129,10 +123,10 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
             type="password"
             id="password"
             autoComplete="current-password"
-            onChange={formik.handleChange}
-            value={formik.values.password}
-            error={formik.errors.password ? true : false}
-            helperText={formik.errors.password}
+            onChange={handleChange}
+            value={values.password}
+            error={errors.fieldErrors.password.length ? true : false}
+            helperText={t(errors.fieldErrors.password)}
           />
           <TextField
             variant="outlined"
@@ -144,11 +138,11 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
             type="password"
             id="repassword"
             autoComplete="current-password"
-            onChange={formik.handleChange}
-            value={formik.values.repassword}
-            error={formik.errors.repassword ? true : false}
-            helperText={formik.errors.repassword}
-          />
+            onChange={handleChange}
+            value={values.repassword}
+            error={errors.fieldErrors.repassword ? true : false}
+            helperText={t(errors.fieldErrors.repassword)}
+          /> */}
 
           {/* <FormControlLabel
             control={<Checkbox value="remember" color="primary" />}

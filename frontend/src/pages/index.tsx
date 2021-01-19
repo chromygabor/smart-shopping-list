@@ -1,15 +1,16 @@
-import Container from "@material-ui/core/Container";
-import Typography from "@material-ui/core/Typography";
-import Box from "@material-ui/core/Box";
-import ProTip from "../components/ProTip";
-import Link from "../components/Link";
-import Copyright from "../components/Copyright";
 import AppBar from "@material-ui/core/AppBar";
-import Toolbar from "@material-ui/core/Toolbar";
-import IconButton from "@material-ui/core/IconButton";
+import Box from "@material-ui/core/Box";
 import Button from "@material-ui/core/Button";
-import MenuIcon from "@material-ui/icons/Menu";
+import Container from "@material-ui/core/Container";
+import IconButton from "@material-ui/core/IconButton";
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles";
+import Toolbar from "@material-ui/core/Toolbar";
+import Typography from "@material-ui/core/Typography";
+import MenuIcon from "@material-ui/icons/Menu";
+import useTranslation from "next-translate/useTranslation";
+import Copyright from "../components/Copyright";
+import Link from "../components/Link";
+import ProTip from "../components/ProTip";
 import { useMeQuery } from "../generated/graphql";
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -37,7 +38,7 @@ const useStyles = makeStyles((theme: Theme) =>
 export default function Index() {
   const r = useMeQuery();
 
-  console.log(r);
+  const { t, lang } = useTranslation(); // default namespace (optional)
 
   const classes = useStyles();
 
@@ -89,7 +90,7 @@ export default function Index() {
       </AppBar>
       <Box my={4}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Next.js example
+          {t("common:greeting")}
         </Typography>
         <Link href="/about" color="secondary">
           Go to the about page

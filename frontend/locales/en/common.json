@@ -1,0 +1,5 @@
+{
+  "greeting": "Hello World",
+  "isEmail": "Not a valid email address",
+  "minLength": "Too short"
+}
