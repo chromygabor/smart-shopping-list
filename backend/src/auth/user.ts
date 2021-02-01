@@ -1,5 +1,6 @@
+import { UserInputError } from 'apollo-server-express'
 import argon2 from 'argon2'
-import { ApplicationError, ValidationErrors } from '../common/ApplicationError'
+import { IsEmail, MinLength } from 'class-validator'
 import {
   Arg,
   Ctx,
@@ -11,23 +12,19 @@ import {
   Resolver,
 } from 'type-graphql'
 import { v4 as uuid } from 'uuid'
+import { ValidationErrors } from '../common/ApplicationError'
 import { COOKIE_NAME } from '../constants'
 import { IUser } from '../schemas/User'
 import { MyContext } from '../types'
 import { Response } from '../utils'
-import { UsernameAlreadyTaken } from './errors'
-import { Length, MinLength, IsEmail } from 'class-validator'
 import { IsTheSameAs } from './IsTheSameAs'
-import {
-  ApolloError,
-  UserInputError,
-  ValidationError,
-} from 'apollo-server-express'
+import Errors from './errors'
+import errors from './errors'
 
 @InputType()
 class UserInput {
   @Field({ nullable: true })
-  username: string
+  email: string
   @Field({ nullable: true })
   password: string
 }
@@ -39,12 +36,8 @@ class SingUpInput {
   email: string
 
   @Field({ nullable: true })
-  @IsTheSameAs('repassword', { message: 'PASSWORD_MISMATCH' })
-  @MinLength(5, { message: 'PASSWORD_IS_SHORT' })
+  @MinLength(5)
   password: string
-
-  @Field({ nullable: true })
-  repassword: string
 }
 
 @ObjectType()
@@ -88,20 +81,9 @@ export class UserResolver {
   @Mutation(() => IUser)
   async register(
     @Arg('userInput') userInput: SingUpInput,
-    @Ctx() { db }: MyContext
+    @Ctx() { db, session }: MyContext
   ): Promise<IUser> {
     const hashedPassword = await argon2.hash(userInput.password)
-
-    throw new UserInputError('Bad Input foo', [
-      {
-        errors: ['USERNAME_ALREADY_TAKEN'],
-        fieldErrors: {
-          email: ['isEmail'],
-          password: ['minLength'],
-          repassword: ['different'],
-        },
-      },
-    ])
 
     const userDraft: IUser = {
       _id: uuid(),
@@ -111,65 +93,38 @@ export class UserResolver {
       updatedAt: Date.now(),
     }
 
-    try {
-      const User = db.get('users', [])
-      const u = User.find({ username: userInput.email }).value()
-      if (u) {
-        throw new ValidationErrors([
-          {
-            constraints: {
-              'username-already-taken': 'USERNAME_ALREADY_TAKEN',
-            },
-          },
-        ])
-      }
-
-      db.get('users', []).push(userDraft).write()
-
-      return userDraft
-    } catch (err) {
-      if (err.message.toLowerCase().includes('duplicate key')) {
-        throw new ValidationErrors([
-          {
-            constraints: {
-              'username-already-taken': 'USERNAME_ALREADY_TAKEN',
-            },
-          },
-        ])
-      } else {
-        throw new ValidationErrors([
-          {
-            constraints: {
-              unknown: 'Something went wrong',
-            },
-          },
-        ])
-      }
+    const User = db.get('users', [])
+    const u = User.find({ email: userInput.email }).value()
+    if (u) {
+      throw Errors.InputError(
+        'USERNAME_ALREADY_TAKEN',
+        'User name is already taken'
+      )
     }
+
+    db.get('users', []).push(userDraft).write()
+
+    session.userId = userDraft._id
+
+    return userDraft
   }
 
-  @Mutation(() => UserResponse)
+  @Mutation(() => IUser)
   async login(
     @Arg('userInput') userInput: UserInput,
     @Ctx() { db, session }: MyContext
-  ): Promise<UserResponse> {
+  ): Promise<IUser> {
     const User = db.get('users', [])
-    const user = User.find({ username: userInput.username }).value()
+    const user = User.find({ email: userInput.email }).value()
     if (!user) {
-      return UserResponse.failure({
-        field: 'username',
-        message: "username doesn't exists",
-      })
+      throw errors.ApplicationError('BAD_CREDENTIALS', 'Bad credentials')
     }
     const valid = await argon2.verify(user.password, userInput.password)
     if (!valid) {
-      return UserResponse.failure({
-        field: 'password',
-        message: 'password is incorrectf',
-      })
+      throw errors.ApplicationError('BAD_CREDENTIALS', 'Bad credentials')
     }
     session.userId = user._id
-    return UserResponse.success(user)
+    return user
   }
 
   @Mutation(() => Boolean)

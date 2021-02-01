@@ -5,6 +5,7 @@ import Container from "@material-ui/core/Container";
 import IconButton from "@material-ui/core/IconButton";
 import { createStyles, makeStyles, Theme } from "@material-ui/core/styles";
 import Toolbar from "@material-ui/core/Toolbar";
+import CircularProgress from "@material-ui/core/CircularProgress";
 import Typography from "@material-ui/core/Typography";
 import MenuIcon from "@material-ui/icons/Menu";
 import useTranslation from "next-translate/useTranslation";
@@ -57,7 +58,9 @@ export default function Index() {
           <Typography variant="h6" className={classes.title}>
             News
           </Typography>
-          {r.data && r.data.me ? (
+          {r.loading ? (
+            <CircularProgress />
+          ) : r.data && r.data.me ? (
             <p>LoggedIn</p>
           ) : (
             <>

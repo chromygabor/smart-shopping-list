@@ -1,0 +1,3 @@
+query repository($input: String!) {
+  repository(input: $input)
+}

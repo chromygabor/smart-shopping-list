@@ -15,15 +15,14 @@ export type Scalars = {
 
 export type Query = {
   __typename?: 'Query';
-  hello: Scalars['String'];
   me?: Maybe<IUser>;
   users: Array<IUser>;
+  hello: Scalars['String'];
 };
 
 export type IUser = {
   __typename?: 'IUser';
   _id: Scalars['String'];
-  username: Scalars['String'];
   email: Scalars['String'];
   password: Scalars['String'];
   createdAt: Scalars['Float'];
@@ -33,7 +32,7 @@ export type IUser = {
 export type Mutation = {
   __typename?: 'Mutation';
   register: IUser;
-  login: UserResponse;
+  login: IUser;
   logout: Scalars['Boolean'];
 };
 
@@ -50,33 +49,20 @@ export type MutationLoginArgs = {
 export type SingUpInput = {
   email?: Maybe<Scalars['String']>;
   password?: Maybe<Scalars['String']>;
-  repassword?: Maybe<Scalars['String']>;
-};
-
-export type UserResponse = {
-  __typename?: 'UserResponse';
-  failures?: Maybe<Array<FieldError>>;
-  response?: Maybe<IUser>;
-};
-
-export type FieldError = {
-  __typename?: 'FieldError';
-  field: Scalars['String'];
-  message: Scalars['String'];
 };
 
 export type UserInput = {
-  username?: Maybe<Scalars['String']>;
+  email?: Maybe<Scalars['String']>;
   password?: Maybe<Scalars['String']>;
 };
 
 export type UserFragment = (
   { __typename?: 'IUser' }
-  & Pick<IUser, '_id' | 'username'>
+  & Pick<IUser, '_id' | 'email'>
 );
 
 export type LoginMutationVariables = Exact<{
-  username: Scalars['String'];
+  email: Scalars['String'];
   password: Scalars['String'];
 }>;
 
@@ -84,14 +70,8 @@ export type LoginMutationVariables = Exact<{
 export type LoginMutation = (
   { __typename?: 'Mutation' }
   & { login: (
-    { __typename?: 'UserResponse' }
-    & { failures?: Maybe<Array<(
-      { __typename?: 'FieldError' }
-      & Pick<FieldError, 'field' | 'message'>
-    )>>, response?: Maybe<(
-      { __typename?: 'IUser' }
-      & UserFragment
-    )> }
+    { __typename?: 'IUser' }
+    & UserFragment
   ) }
 );
 
@@ -106,7 +86,6 @@ export type LogoutMutation = (
 export type RegisterMutationVariables = Exact<{
   email: Scalars['String'];
   password: Scalars['String'];
-  repassword: Scalars['String'];
 }>;
 
 
@@ -132,19 +111,13 @@ export type MeQuery = (
 export const UserFragmentDoc = gql`
     fragment user on IUser {
   _id
-  username
+  email
 }
     `;
 export const LoginDocument = gql`
-    mutation Login($username: String!, $password: String!) {
-  login(userInput: {username: $username, password: $password}) {
-    failures {
-      field
-      message
-    }
-    response {
-      ...user
-    }
+    mutation Login($email: String!, $password: String!) {
+  login(userInput: {email: $email, password: $password}) {
+    ...user
   }
 }
     ${UserFragmentDoc}`;
@@ -163,7 +136,7 @@ export type LoginMutationFn = Apollo.MutationFunction<LoginMutation, LoginMutati
  * @example
  * const [loginMutation, { data, loading, error }] = useLoginMutation({
  *   variables: {
- *      username: // value for 'username'
+ *      email: // value for 'email'
  *      password: // value for 'password'
  *   },
  * });
@@ -204,10 +177,8 @@ export type LogoutMutationHookResult = ReturnType<typeof useLogoutMutation>;
 export type LogoutMutationResult = Apollo.MutationResult<LogoutMutation>;
 export type LogoutMutationOptions = Apollo.BaseMutationOptions<LogoutMutation, LogoutMutationVariables>;
 export const RegisterDocument = gql`
-    mutation Register($email: String!, $password: String!, $repassword: String!) {
-  register(
-    userInput: {email: $email, password: $password, repassword: $repassword}
-  ) {
+    mutation Register($email: String!, $password: String!) {
+  register(userInput: {email: $email, password: $password}) {
     ...user
   }
 }
@@ -229,7 +200,6 @@ export type RegisterMutationFn = Apollo.MutationFunction<RegisterMutation, Regis
  *   variables: {
  *      email: // value for 'email'
  *      password: // value for 'password'
- *      repassword: // value for 'repassword'
  *   },
  * });
  */

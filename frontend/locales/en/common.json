@@ -1,5 +1,11 @@
 {
   "greeting": "Hello World",
   "isEmail": "Not a valid email address",
-  "minLength": "Too short"
+  "minLength": "Too short",
+  "isTheSameAs": "Passwords are different",
+  "inputfield_email": "Email address",
+  "inputfield_password": "Password",
+  "inputfield_repassword": "Retype password",
+  "USERNAME_ALREADY_TAKEN": "Username is already taken",
+  "UNKNOWN": "Unknown error happened"
 }

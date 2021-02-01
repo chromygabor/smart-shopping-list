@@ -4,13 +4,17 @@ import Button from "@material-ui/core/Button";
 import Container from "@material-ui/core/Container";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import Grid from "@material-ui/core/Grid";
-import Link from "../components/Link";
 import { makeStyles } from "@material-ui/core/styles";
-import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
 import LockOutlinedIcon from "@material-ui/icons/LockOutlined";
-import React from "react";
+import useTranslation from "next-translate/useTranslation";
+import { useRouter } from "next/router";
+import React, { FormEvent } from "react";
 import Copyright from "../components/Copyright";
+import TextField from "../components/form/TextField";
+import { useForm } from "../components/form/useForm";
+import Link from "../components/Link";
+import { useLoginMutation } from "../generated/graphql";
 
 const useStyles = makeStyles((theme) => ({
   paper: {
@@ -37,6 +41,60 @@ export interface ISignInProps {}
 const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
   const classes = useStyles();
 
+  const { t } = useTranslation("common");
+
+  const [login] = useLoginMutation();
+  //   {
+  //   update: (cache, { data: { login } }) => {
+  //     cache.modify({
+  //       fields: {
+  //         me: { __ref: "IUSER:" },
+  //       },
+  //     });
+  //   },
+  // }
+
+  const router = useRouter();
+
+  const form = useForm({
+    initialValues: {
+      email: "",
+      password: "",
+    },
+    handleSubmit: async (
+      e: FormEvent,
+      values,
+      { setException, setFieldError, setFormError }
+    ) => {
+      e.preventDefault();
+
+      try {
+        const res = await login({ variables: values });
+        if (res.data) {
+          router.push("/");
+        } else {
+          if (res.errors) {
+            setException(res.errors);
+          } else {
+            throw new Error("Unknown error");
+          }
+        }
+      } catch (error) {
+        if (error.graphQLErrors.length > 0) {
+          setException(error.graphQLErrors);
+        } else {
+          setFormError("UNKNOWN");
+          console.error(error);
+        }
+      }
+    },
+    defaultFieldVariant: "outlined",
+    translate: (key: string) => {
+      return t(key);
+    },
+    labelKeyPrefix: "inputfield",
+  });
+
   return (
     <Container component="main" maxWidth="xs">
       <CssBaseline />
@@ -47,27 +105,28 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
         <Typography component="h1" variant="h5">
           Sign in
         </Typography>
-        <form className={classes.form} noValidate>
+        <form className={classes.form} noValidate onSubmit={form.handleSubmit}>
+          {form.isInvalid.form ? (
+            <Typography color="error">
+              {form.helpers.form.join(". ")}
+            </Typography>
+          ) : null}
           <TextField
-            variant="outlined"
+            form={form}
+            name="email"
             margin="normal"
             required
             fullWidth
-            id="email"
-            label="Email Address"
-            name="email"
             autoComplete="email"
             autoFocus
           />
           <TextField
-            variant="outlined"
+            form={form}
+            name="password"
+            type="password"
             margin="normal"
             required
             fullWidth
-            name="password"
-            label="Password"
-            type="password"
-            id="password"
             autoComplete="current-password"
           />
           {/* <FormControlLabel

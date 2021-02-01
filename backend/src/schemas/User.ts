@@ -6,9 +6,6 @@ export class IUser {
   _id: string
 
   @Field()
-  username?: string
-
-  @Field()
   email: string
 
   @Field()

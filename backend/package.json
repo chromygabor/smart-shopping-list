@@ -25,11 +25,15 @@
     "nodemon": "^2.0.4",
     "prettier": "^2.0.5",
     "ts-node": "^8.10.2",
-    "typescript": "^3.9.7"
+    "ts-node-dev": "^1.1.1",
+    "typescript": "^3.9.7",
+    "@types/lowdb-session-store": "git://github.com/chromygabor/types-lowdb-session-store.git"
   },
   "scripts": {
     "start": "ts-node src/app.ts",
-    "dev": "nodemon --ignore 'data' --exec ts-node src/app.ts",
+    "dev": "ts-node-dev --respawn --ignore-watch data 'src/app.ts'",
+    "dev:debug": "ts-node-dev --debug --inspect=4321 --respawn --preserve-symlinks --ignore-watch data src/app.ts",
+    "dev:old": "nodemon --ignore 'data' --exec ts-node src/app.ts",
     "build": "tsc --build tsconfig.json",
     "build:watch": "tsc --build tsconfig.json --watch",
     "format": "prettier --write src/**/*.{js,jsx,ts,tsx}",
@@ -48,6 +52,7 @@
     "express-session": "^1.17.1",
     "graphql": "^15.3.0",
     "lowdb": "^1.0.0",
+    "lowdb-session-store": "^1.1.1",
     "mocha": "^8.0.1",
     "reflect-metadata": "^0.1.13",
     "session-file-store": "^1.5.0",
