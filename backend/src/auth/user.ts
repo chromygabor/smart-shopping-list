@@ -83,6 +83,14 @@ export class UserResolver {
     @Arg('userInput') userInput: SingUpInput,
     @Ctx() { db, session }: MyContext
   ): Promise<IUser> {
+    const p = new Promise<any>((r) => {
+      setTimeout(() => {
+        r(true)
+      }, 1000)
+    })
+
+    await p
+
     const hashedPassword = await argon2.hash(userInput.password)
 
     const userDraft: IUser = {
@@ -114,6 +122,14 @@ export class UserResolver {
     @Arg('userInput') userInput: UserInput,
     @Ctx() { db, session }: MyContext
   ): Promise<IUser> {
+    const p = new Promise<any>((r) => {
+      setTimeout(() => {
+        r(true)
+      }, 1000)
+    })
+
+    await p
+
     const User = db.get('users', [])
     const user = User.find({ email: userInput.email }).value()
     if (!user) {

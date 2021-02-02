@@ -12,7 +12,17 @@ import useTranslation from "next-translate/useTranslation";
 import Copyright from "../components/Copyright";
 import Link from "../components/Link";
 import ProTip from "../components/ProTip";
-import { useMeQuery } from "../generated/graphql";
+import {
+  LogoutDocument,
+  MeDocument,
+  useLogoutMutation,
+  useMeQuery,
+} from "../generated/graphql";
+import { AccountCircle } from "@material-ui/icons";
+import { useState } from "react";
+import Menu from "@material-ui/core/Menu";
+import MenuItem from "@material-ui/core/MenuItem";
+import { update } from "../utils/cacheUpdate";
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -37,11 +47,30 @@ const useStyles = makeStyles((theme: Theme) =>
 );
 
 export default function Index() {
-  const r = useMeQuery();
+  const { data, loading: meLoading } = useMeQuery();
+
+  const [logout] = useLogoutMutation({
+    update: update(MeDocument, (data) => ({ me: null })),
+  });
 
   const { t, lang } = useTranslation(); // default namespace (optional)
 
   const classes = useStyles();
+
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    setAnchorEl(null);
+  };
 
   return (
     <Container maxWidth="md">
@@ -58,10 +87,29 @@ export default function Index() {
           <Typography variant="h6" className={classes.title}>
             News
           </Typography>
-          {r.loading ? (
+          {meLoading ? (
             <CircularProgress />
-          ) : r.data && r.data.me ? (
-            <p>LoggedIn</p>
+          ) : data && data.me ? (
+            <>
+              <Button
+                variant="text"
+                color="inherit"
+                aria-controls="simple-menu"
+                aria-haspopup="true"
+                onClick={handleClick}
+              >
+                <AccountCircle />
+              </Button>
+              <Menu
+                id="simple-menu"
+                anchorEl={anchorEl}
+                keepMounted
+                open={Boolean(anchorEl)}
+                onClose={handleClose}
+              >
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
+              </Menu>
+            </>
           ) : (
             <>
               <Link

@@ -36,10 +36,13 @@ export interface IForm<T> {
   isInvalid: IsInvalid<T>;
   helpers: Errors<T>;
   errors: Errors<T>;
+  isSubmiting: boolean;
 }
 
 export function useForm<T extends object>(props: IFormProps<T>): IForm<T> {
   const { initialValues, handleSubmit } = props;
+
+  const [isSubmiting, setSubmiting] = useState(false);
 
   const [values, setValues] = useState(initialValues);
 
@@ -74,6 +77,8 @@ export function useForm<T extends object>(props: IFormProps<T>): IForm<T> {
   }, [errors]);
 
   const _handleSubmit = (event: FormEvent) => {
+    console.log("Setting isSubmitting");
+    setSubmiting(true);
     handleSubmit(event, values, {
       setException: (errs) => setErrors(fromServerError(errors, errs)),
       setFieldError: (fieldName: string, error: string) => {
@@ -92,6 +97,8 @@ export function useForm<T extends object>(props: IFormProps<T>): IForm<T> {
         }));
       },
     });
+    console.log("Clearing isSubmitting");
+    setSubmiting(false);
   };
 
   const handleChange = (name: string, value: ValueOf<T>) => {
@@ -112,5 +119,6 @@ export function useForm<T extends object>(props: IFormProps<T>): IForm<T> {
     errors,
     helpers,
     handleSubmit: _handleSubmit,
+    isSubmiting,
   };
 }

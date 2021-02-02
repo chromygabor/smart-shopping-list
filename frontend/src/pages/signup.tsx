@@ -1,9 +1,13 @@
 import {
+  Backdrop,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Grid,
+  Paper,
 } from "@material-ui/core";
 import Avatar from "@material-ui/core/Avatar";
 import Box from "@material-ui/core/Box";
@@ -19,7 +23,8 @@ import React, { FormEvent, useState } from "react";
 import Copyright from "../components/Copyright";
 import TextField from "../components/form/TextField";
 import { useForm } from "../components/form/useForm";
-import { useRegisterMutation } from "../generated/graphql";
+import { MeDocument, useRegisterMutation } from "../generated/graphql";
+import { update } from "../utils/cacheUpdate";
 
 const useStyles = makeStyles((theme) => ({
   paper: {
@@ -28,6 +33,19 @@ const useStyles = makeStyles((theme) => ({
     flexDirection: "column",
     alignItems: "center",
   },
+  loginForm: {
+    justifyContent: "center",
+    minHeight: "90vh",
+  },
+  buttonBlock: {
+    width: "100%",
+  },
+  loginBackground: {
+    justifyContent: "center",
+    minHeight: "30vh",
+    padding: "50px",
+  },
+
   avatar: {
     margin: theme.spacing(1),
     backgroundColor: theme.palette.secondary.main,
@@ -39,21 +57,36 @@ const useStyles = makeStyles((theme) => ({
   submit: {
     margin: theme.spacing(3, 0, 2),
   },
+  backdrop: {
+    zIndex: theme.zIndex.drawer + 1,
+    color: "#fff",
+  },
 }));
 
 export interface ISignInProps {}
 
 const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
   const classes = useStyles();
+
   const { t } = useTranslation("common");
 
-  const [register] = useRegisterMutation();
-  const [opened, setOpened] = useState(false);
+  const [isProgress, setProgress] = useState(false);
+
+  const [register] = useRegisterMutation({
+    update: update(MeDocument, (data) => {
+      if (data.register) {
+        return { me: data.register };
+      } else {
+        return {};
+      }
+    }),
+  });
+  const [dialogOpened, setDialogOpened] = useState(false);
 
   const router = useRouter();
 
   const handleClose = (_params) => {
-    setOpened(false);
+    setDialogOpened(false);
     router.push("/");
   };
 
@@ -68,6 +101,7 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
       values,
       { setException, setFieldError, setFormError }
     ) => {
+      setProgress(true);
       e.preventDefault();
 
       if (values.password !== values.repassword) {
@@ -76,8 +110,9 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
         try {
           const res = await register({ variables: values });
           if (res.data) {
-            setOpened(true);
+            setDialogOpened(true);
           } else {
+            setProgress(false);
             if (res.errors) {
               setException(res.errors);
             } else {
@@ -85,6 +120,7 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
             }
           }
         } catch (error) {
+          setProgress(false);
           if (error.graphQLErrors.length > 0) {
             setException(error.graphQLErrors);
           } else {
@@ -105,74 +141,103 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
     <>
       <Container component="main" maxWidth="xs">
         <CssBaseline />
-        <div className={classes.paper}>
-          <Avatar className={classes.avatar}>
-            <LockOutlinedIcon />
-          </Avatar>
-          <Typography component="h1" variant="h5">
-            Sign up
-          </Typography>
-          <form
-            className={classes.form}
-            noValidate
-            onSubmit={form.handleSubmit}
-          >
-            {form.isInvalid.form ? (
-              <Typography color="error">
-                {form.helpers.form.join(". ")}
-              </Typography>
-            ) : null}
 
-            <TextField
-              form={form}
-              name="email"
-              margin="normal"
-              required
-              fullWidth
-              autoComplete="email"
-              autoFocus
-            />
-            <TextField
-              form={form}
-              name="password"
-              type="password"
-              margin="normal"
-              required
-              fullWidth
-              autoComplete="current-password"
-            />
-            <TextField
-              form={form}
-              name="repassword"
-              type="password"
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              autoComplete="current-password"
-            />
-
-            {/* <FormControlLabel
-            control={<Checkbox value="remember" color="primary" />}
-            label="Remember me"
-          /> */}
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              className={classes.submit}
+        <Grid container spacing={0} justify="center" direction="row">
+          <Grid item>
+            <Grid
+              container
+              direction="column"
+              justify="center"
+              spacing={2}
+              className={classes.loginForm}
             >
-              Sign Up
-            </Button>
-          </form>
-        </div>
+              <Paper
+                variant="elevation"
+                elevation={2}
+                className={classes.loginBackground}
+              >
+                <Grid item>
+                  <Avatar className={classes.avatar}>
+                    <LockOutlinedIcon />
+                  </Avatar>
+                </Grid>
+                <Grid item>
+                  <Typography component="h1" variant="h5">
+                    Sign up
+                  </Typography>
+                </Grid>
+                {form.isInvalid.form ? (
+                  <Grid item>
+                    <Typography color="error">
+                      {form.helpers.form.join(". ")}
+                    </Typography>
+                  </Grid>
+                ) : null}
+                <Grid item>
+                  <form
+                    className={classes.form}
+                    noValidate
+                    onSubmit={form.handleSubmit}
+                  >
+                    <Grid container direction="column" spacing={2}>
+                      <Grid item>
+                        <TextField
+                          form={form}
+                          name="email"
+                          margin="normal"
+                          required
+                          fullWidth
+                          autoComplete="email"
+                          autoFocus
+                        />
+                      </Grid>
+                      <Grid item>
+                        <TextField
+                          form={form}
+                          name="password"
+                          type="password"
+                          margin="normal"
+                          required
+                          fullWidth
+                          autoComplete="current-password"
+                        />
+                      </Grid>
+                      <Grid item>
+                        <TextField
+                          form={form}
+                          name="repassword"
+                          type="password"
+                          variant="outlined"
+                          margin="normal"
+                          required
+                          fullWidth
+                          autoComplete="current-password"
+                        />
+                      </Grid>
+                      <Grid item>
+                        <Button
+                          type="submit"
+                          fullWidth
+                          variant="contained"
+                          color="primary"
+                          className={classes.buttonBlock}
+                        >
+                          Sign Up
+                        </Button>
+                      </Grid>
+                    </Grid>
+                  </form>
+                </Grid>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Grid>
         <Box mt={8}>
           <Copyright />
         </Box>
       </Container>
       <Dialog
-        open={opened}
+        open={dialogOpened}
         onClose={handleClose}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
@@ -195,6 +260,9 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
           </Button>
         </DialogActions>
       </Dialog>
+      <Backdrop className={classes.backdrop} open={isProgress}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
     </>
   );
 };
