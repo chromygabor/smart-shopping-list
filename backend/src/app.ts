@@ -9,8 +9,10 @@ import 'reflect-metadata'
 import { buildSchema } from 'type-graphql'
 import { UserResolver } from './auth/user'
 import { COOKIE_NAME, __prod__ } from './constants'
+import ConsumptionResolver from './consumption/resolver'
+import { requestScopeMiddlewareFn } from './RequestScopeMiddleware'
 import { HelloResolver } from './resolvers/hello'
-import { Database, MyContext, MySession } from './types'
+import { Database, MyContext, MySession, RequestStorage } from './types'
 
 const sessionTTL = 14 * 24 * 60 * 60
 
@@ -22,12 +24,24 @@ const db = low(adapter)
 db.defaults({
   users: [],
   sessions: [],
+  consumptions: [
+    { id: '1', name: 'milk', qty: 10, unitId: '1' },
+    { id: '2', name: 'bread', qty: 3, unitId: '3' },
+    { id: '3', name: 'sugar', qty: 5, unitId: '2' },
+  ],
+  units: [
+    { id: '1', name: 'liter' },
+    { id: '2', name: 'piece' },
+    { id: '3', name: 'gramm' },
+  ],
 }).write()
 
 db.truncate()
 
 const main = async () => {
   const app = express()
+
+  app.use(requestScopeMiddlewareFn(new RequestStorage()))
 
   app.use(
     cors({
@@ -52,7 +66,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, UserResolver],
+      resolvers: [HelloResolver, UserResolver, ConsumptionResolver],
       validate: true,
     }),
     context: ({ req, res }) =>
@@ -61,6 +75,7 @@ const main = async () => {
         req,
         session: (req.session! as unknown) as MySession,
         res,
+        requestStorage: (req as any).storage! as RequestStorage,
       } as MyContext),
     formatError: (err) => {
       if (
