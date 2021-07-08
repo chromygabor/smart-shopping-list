@@ -17,6 +17,8 @@ export type Query = {
   __typename?: 'Query';
   me?: Maybe<IUser>;
   users: Array<IUser>;
+  units: Array<Uom>;
+  consumptions: Array<InventoryItem>;
   hello: Scalars['String'];
 };
 
@@ -27,6 +29,21 @@ export type IUser = {
   password: Scalars['String'];
   createdAt: Scalars['Float'];
   updatedAt: Scalars['Float'];
+};
+
+export type Uom = {
+  __typename?: 'UOM';
+  id: Scalars['String'];
+  name: Scalars['String'];
+};
+
+export type InventoryItem = {
+  __typename?: 'InventoryItem';
+  id: Scalars['String'];
+  name: Scalars['String'];
+  unitId: Scalars['String'];
+  qty: Scalars['Float'];
+  unit: Uom;
 };
 
 export type Mutation = {
@@ -97,6 +114,21 @@ export type RegisterMutation = (
   ) }
 );
 
+export type ConsumptionsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ConsumptionsQuery = (
+  { __typename?: 'Query' }
+  & { consumptions: Array<(
+    { __typename?: 'InventoryItem' }
+    & Pick<InventoryItem, 'id' | 'name' | 'qty' | 'unitId'>
+    & { unit: (
+      { __typename?: 'UOM' }
+      & Pick<Uom, 'id' | 'name'>
+    ) }
+  )> }
+);
+
 export type MeQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -105,6 +137,17 @@ export type MeQuery = (
   & { me?: Maybe<(
     { __typename?: 'IUser' }
     & UserFragment
+  )> }
+);
+
+export type UnitsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type UnitsQuery = (
+  { __typename?: 'Query' }
+  & { units: Array<(
+    { __typename?: 'UOM' }
+    & Pick<Uom, 'id' | 'name'>
   )> }
 );
 
@@ -209,6 +252,45 @@ export function useRegisterMutation(baseOptions?: Apollo.MutationHookOptions<Reg
 export type RegisterMutationHookResult = ReturnType<typeof useRegisterMutation>;
 export type RegisterMutationResult = Apollo.MutationResult<RegisterMutation>;
 export type RegisterMutationOptions = Apollo.BaseMutationOptions<RegisterMutation, RegisterMutationVariables>;
+export const ConsumptionsDocument = gql`
+    query consumptions {
+  consumptions {
+    id
+    name
+    qty
+    unit {
+      id
+      name
+    }
+    unitId
+  }
+}
+    `;
+
+/**
+ * __useConsumptionsQuery__
+ *
+ * To run a query within a React component, call `useConsumptionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useConsumptionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useConsumptionsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useConsumptionsQuery(baseOptions?: Apollo.QueryHookOptions<ConsumptionsQuery, ConsumptionsQueryVariables>) {
+        return Apollo.useQuery<ConsumptionsQuery, ConsumptionsQueryVariables>(ConsumptionsDocument, baseOptions);
+      }
+export function useConsumptionsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<ConsumptionsQuery, ConsumptionsQueryVariables>) {
+          return Apollo.useLazyQuery<ConsumptionsQuery, ConsumptionsQueryVariables>(ConsumptionsDocument, baseOptions);
+        }
+export type ConsumptionsQueryHookResult = ReturnType<typeof useConsumptionsQuery>;
+export type ConsumptionsLazyQueryHookResult = ReturnType<typeof useConsumptionsLazyQuery>;
+export type ConsumptionsQueryResult = Apollo.QueryResult<ConsumptionsQuery, ConsumptionsQueryVariables>;
 export const MeDocument = gql`
     query me {
   me {
@@ -241,3 +323,36 @@ export function useMeLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<MeQuery
 export type MeQueryHookResult = ReturnType<typeof useMeQuery>;
 export type MeLazyQueryHookResult = ReturnType<typeof useMeLazyQuery>;
 export type MeQueryResult = Apollo.QueryResult<MeQuery, MeQueryVariables>;
+export const UnitsDocument = gql`
+    query units {
+  units {
+    id
+    name
+  }
+}
+    `;
+
+/**
+ * __useUnitsQuery__
+ *
+ * To run a query within a React component, call `useUnitsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useUnitsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useUnitsQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useUnitsQuery(baseOptions?: Apollo.QueryHookOptions<UnitsQuery, UnitsQueryVariables>) {
+        return Apollo.useQuery<UnitsQuery, UnitsQueryVariables>(UnitsDocument, baseOptions);
+      }
+export function useUnitsLazyQuery(baseOptions?: Apollo.LazyQueryHookOptions<UnitsQuery, UnitsQueryVariables>) {
+          return Apollo.useLazyQuery<UnitsQuery, UnitsQueryVariables>(UnitsDocument, baseOptions);
+        }
+export type UnitsQueryHookResult = ReturnType<typeof useUnitsQuery>;
+export type UnitsLazyQueryHookResult = ReturnType<typeof useUnitsLazyQuery>;
+export type UnitsQueryResult = Apollo.QueryResult<UnitsQuery, UnitsQueryVariables>;

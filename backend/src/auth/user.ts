@@ -49,9 +49,6 @@ class FieldError {
   message: string
 }
 
-@ObjectType()
-class UserResponse extends Response(IUser, FieldError) {}
-
 @Resolver()
 export class UserResolver {
   @Query(() => IUser, { nullable: true })

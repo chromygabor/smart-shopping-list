@@ -1,0 +1,6 @@
+query units {
+  units {
+    id
+    name
+  }
+}

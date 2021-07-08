@@ -23,13 +23,14 @@ const TextField: React.FC<ITextFieldProps> = ({
     ? form.props.defaultFieldVariant
     : "standard";
 
-  const actualLabel = label
-    ? label
-    : labelKey
-    ? form.props.translate(labelKey)
-    : form.props.labelKeyPrefix
-    ? form.props.translate(`${form.props.labelKeyPrefix}_${name}`)
-    : name;
+  const actualLabel =
+    label !== undefined
+      ? label
+      : labelKey
+      ? form.props.translate(labelKey)
+      : form.props.labelKeyPrefix
+      ? form.props.translate(`${form.props.labelKeyPrefix}_${name}`)
+      : name;
 
   return (
     <MuiTextField

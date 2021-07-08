@@ -1,0 +1,12 @@
+query consumptions {
+  consumptions {
+    id
+    name
+    qty
+    unit {
+      id
+      name
+    }
+    unitId
+  }
+}

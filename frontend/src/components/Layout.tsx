@@ -14,20 +14,26 @@ import { AccountCircle } from '@material-ui/icons'
 import MenuIcon from '@material-ui/icons/Menu'
 import useTranslation from 'next-translate/useTranslation'
 import { useState } from 'react'
-import Copyright from '../components/Copyright'
-import PageHeader from '../components/PageHeader'
+import Copyright from './Copyright'
+import PageHeader from './PageHeader'
 import { MeDocument, useLogoutMutation, useMeQuery } from '../generated/graphql'
 import { update } from '../utils/cacheUpdate'
 import ListIcon from '@material-ui/icons/List'
 import Link from 'next/link'
 
-export interface IPageLayoutProps {
+export interface ILayoutProps {
   title: string
   subtitle: string
   icon: JSX.Element
 }
 
 const useStyles = makeStyles((theme) => ({
+  container: {
+    padding: 0,
+    [theme.breakpoints.down('xs')]: {
+      fontSize: 12,
+    },
+  },
   appBar: {
     transform: 'translateZ(0)',
   },
@@ -48,9 +54,12 @@ const useStyles = makeStyles((theme) => ({
   signin: {
     border: '1px solid',
   },
+  content: {
+    padding: theme.spacing(3),
+  },
 }))
 
-const PageLayout: React.FC<IPageLayoutProps> = ({
+const Layout: React.FC<ILayoutProps> = ({
   title,
   subtitle,
   icon,
@@ -82,7 +91,7 @@ const PageLayout: React.FC<IPageLayoutProps> = ({
   }
 
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" className={classes.container}>
       <AppBar position="static" color="primary" className={classes.appBar}>
         <Toolbar>
           <IconButton
@@ -94,7 +103,7 @@ const PageLayout: React.FC<IPageLayoutProps> = ({
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" className={classes.title}>
-            News
+            {title}
           </Typography>
           {meLoading ? (
             <CircularProgress />
@@ -143,8 +152,7 @@ const PageLayout: React.FC<IPageLayoutProps> = ({
           )}
         </Toolbar>
       </AppBar>
-      <PageHeader title={title} subtitle={subtitle} icon={icon} />
-      <Box my={4}>
+      <Box className={classes.content}>
         {children}
         <Copyright />
       </Box>
@@ -152,4 +160,4 @@ const PageLayout: React.FC<IPageLayoutProps> = ({
   )
 }
 
-export default PageLayout
+export default Layout

@@ -1,5 +1,4 @@
-import { MyContext } from 'src/types'
-import { ObjectType, Resolver, Query, Field, Ctx, Root } from 'type-graphql'
+import { Field, Mutation, ObjectType, Query, Resolver } from 'type-graphql'
 import { IConsumption, IUOM } from '../types'
 
 @ObjectType()
@@ -11,7 +10,7 @@ class UOM implements IUOM {
 }
 
 @ObjectType()
-class Consumption implements IConsumption {
+class InventoryItem implements IConsumption {
   @Field()
   id: string
   @Field()
@@ -21,26 +20,75 @@ class Consumption implements IConsumption {
   @Field()
   qty: number
 
-  @Field(() => UOM, { nullable: true })
-  unit(
-    @Root() consumption: Consumption,
-    @Ctx() { requestStorage }: MyContext
-  ): UOM | undefined {
-    return requestStorage.unitById(consumption.unitId)
-  }
+  @Field()
+  unit?: UOM
+}
+
+const consumptions: InventoryItem[] = [
+  {
+    id: '1',
+    name: 'milk',
+    qty: 10,
+    unitId: '1',
+  },
+  {
+    id: '2',
+    name: 'bread',
+    qty: 3,
+    unitId: '3',
+  },
+  {
+    id: '3',
+    name: 'sugar',
+    qty: 5,
+    unitId: '2',
+  },
+]
+const units: UOM[] = [
+  {
+    id: '1',
+    name: 'liter',
+  },
+  {
+    id: '2',
+    name: 'piece',
+  },
+  {
+    id: '3',
+    name: 'gramm',
+  },
+]
+
+function unitById(units: IUOM[], id: string): IUOM | undefined {
+  const unit = units.find((unit) => {
+    return unit.id === id
+  })
+
+  if (unit) {
+    return unit
+  } else return undefined
 }
 
 @Resolver()
-class ConsumptionResolver {
-  @Query(() => [Consumption])
-  consumptions(@Ctx() { requestStorage, db }: MyContext): Consumption[] {
-    const units = db.get('units').value()
-    requestStorage.setUnits(units)
+class InventoryResolver {
+  @Query(() => [UOM])
+  units(): UOM[] {
+    return units
+  }
 
-    const cons = db.get('consumptions').value()
+  @Query(() => [InventoryItem])
+  inventory(): InventoryItem[] {
+    const cons = consumptions
 
-    return cons
+    return cons.map((c: IConsumption) => {
+      const unit = unitById(units, c.unitId)
+
+      return {
+        ...c,
+        ...(unit && { unit }),
+      } as InventoryItem
+    })
   }
 }
 
-export default ConsumptionResolver
+export default InventoryResolver

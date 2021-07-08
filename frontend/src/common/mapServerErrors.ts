@@ -1,5 +1,5 @@
-import { mapMapTo, MapTo } from "../../utils/mapObject";
-import { Errors } from "./useForm";
+import { mapMapTo, MapTo } from '../utils/mapObject'
+import { Errors } from '../components/form/useForm'
 
 function fieldsFrom<T>(
   fields: MapTo<T, string[]>,
@@ -7,11 +7,11 @@ function fieldsFrom<T>(
 ): MapTo<T, string[]> {
   const validationErrors = exceptions[0]?.extensions?.exception
     .validationErrors as {
-    property: string;
+    property: string
     constraints: {
-      [key: string]: string;
-    };
-  }[];
+      [key: string]: string
+    }
+  }[]
 
   const fieldErrors = validationErrors.reduce<Record<string, string[]>>(
     (prev, item) => {
@@ -20,16 +20,16 @@ function fieldsFrom<T>(
             ...prev,
             [item.property]: Object.keys(item.constraints),
           }
-        : prev;
+        : prev
     },
     {}
-  );
+  )
 
   return mapMapTo(
     (_value, key) =>
       fieldErrors.hasOwnProperty(key) ? fieldErrors[key] : ([] as string[]),
     fields
-  );
+  )
 }
 
 export function fromServerError<T>(
@@ -40,7 +40,7 @@ export function fromServerError<T>(
     exceptions[0]?.extensions?.exception.validationErrors &&
     Array.isArray(exceptions[0]?.extensions?.exception.validationErrors)
       ? fieldsFrom(errors.fields, exceptions)
-      : errors.fields;
+      : errors.fields
 
   const form =
     exceptions[0]?.extensions?.exception.inputErrors &&
@@ -48,10 +48,10 @@ export function fromServerError<T>(
       ? exceptions[0]?.extensions?.exception.inputErrors.map(
           (item) => item.constraint
         )
-      : ([] as string[]);
+      : ([] as string[])
 
   return {
     form,
     fields,
-  };
+  }
 }

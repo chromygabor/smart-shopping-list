@@ -1,4 +1,4 @@
-import { Backdrop, CircularProgress } from "@material-ui/core";
+import { Backdrop, CircularProgress, Link } from "@material-ui/core";
 import Box from "@material-ui/core/Box";
 import Button from "@material-ui/core/Button";
 import Container from "@material-ui/core/Container";
@@ -11,10 +11,11 @@ import React, { FormEvent, useState } from "react";
 import Copyright from "../components/Copyright";
 import TextField from "../components/form/TextField";
 import { useForm } from "../components/form/useForm";
-import Link from "../components/Link";
+// import Link from "../components/Link";
 import SignForm from "../components/SignForm";
 import { MeDocument, useLoginMutation } from "../generated/graphql";
 import { update } from "../utils/cacheUpdate";
+import NextLink from "next/link"
 
 const useStyles = makeStyles((theme) => ({
   buttonBlock: {
@@ -121,7 +122,7 @@ const SignIn: React.FC<ISignInProps> = (props: ISignInProps) => {
           >
             Sign In
           </Button>
-          <Link href="/signup" variant="body2">
+          <Link href="/signup" variant="body2" component={NextLink}>
             {"Don't have an account? Sign Up"}
           </Link>
         </SignForm>
