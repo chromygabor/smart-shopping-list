@@ -4,29 +4,16 @@ import { fromServerError } from '../../common/mapServerErrors'
 
 type KeysOfUnion<T> = T extends T ? keyof T : never
 
-// type FieldsRead<T> = {
-//   setValue: Dispatch<SetStateAction<string>>
-//   setValueFromEvent: (
-//     e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
-//   ) => void
-//   value: string
-//   error: string[]
-//   isInvalid: boolean
-// }
-
-// type FieldsReadWrite<T> = FieldsRead<T> & {
-//   setError: Dispatch<SetStateAction<string[]>>
-//   setInvalid: Dispatch<SetStateAction<boolean>>
-// }
-
 type FS = {
   value: string
-  error: string
+  error: string | undefined
 }
 
 type FSR = {
   setValue: (value: string) => void
-  setValueFromEvent: (e: FormEvent) => void
+  setValueFromEvent: (
+    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => void
   value: string
   error: string
   isInvalid: boolean
@@ -90,7 +77,7 @@ export function useMyForm<T>(props: IFormProps<T>): IForm<T> {
         }
       })
     }
-    const setError = (error: string) => {
+    const setError = (error: string | undefined) => {
       setFieldsValue((fieldObjects) => {
         return {
           ...fieldObjects,
@@ -116,14 +103,13 @@ export function useMyForm<T>(props: IFormProps<T>): IForm<T> {
       setValue,
       setError,
       setValueFromEvent,
-      isInvalid: true,
+      isInvalid: !!error,
     } as FSRW
   }, initialValues)
 
   const [formError, setFormError] = useState('')
 
   const handleSubmit = (event: FormEvent) => {
-    console.log('Setting isSubmitting')
     setSubmiting(true)
     onSubmit(event, fields, {
       setException: (errs) => {
@@ -134,7 +120,6 @@ export function useMyForm<T>(props: IFormProps<T>): IForm<T> {
       },
       setFormError,
     })
-    console.log('Clearing isSubmitting')
     setSubmiting(false)
   }
 

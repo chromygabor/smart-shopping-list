@@ -1,4 +1,3 @@
-import { InventoryItemApi } from '@/api/useInventory'
 import { useMyForm } from '@/components/hooks/useMyForm'
 import {
   Box,
@@ -14,14 +13,15 @@ import {
 import { makeStyles } from '@material-ui/core/styles'
 import CancelIcon from '@material-ui/icons/Cancel'
 import SaveIcon from '@material-ui/icons/Save'
-import { Uom } from 'generated/graphql'
+import { InventoryItem, Uom } from 'generated/graphql'
 import useTranslation from 'next-translate/useTranslation'
 import * as React from 'react'
 
 export interface IEditProps {
-  api: InventoryItemApi
   onCancel: () => void
   units: Uom[]
+  item: InventoryItem
+  onSave: (record: Partial<InventoryItem>) => void
 }
 
 const useStyles = makeStyles((theme) => ({
@@ -57,9 +57,10 @@ const useStyles = makeStyles((theme) => ({
 }))
 
 const Edit: React.FC<IEditProps> = ({
-  api: { item, update },
   onCancel,
   units,
+  item,
+  onSave,
 }: IEditProps) => {
   const classes = useStyles()
   const { t } = useTranslation()
@@ -69,13 +70,14 @@ const Edit: React.FC<IEditProps> = ({
     onSubmit: (event, fields, callbacks) => {
       event.preventDefault()
       try {
-        update({
+        onSave({
           name: fields.name.value,
           qty: +fields.qty.value,
           unitId: fields.unitId.value,
         })
-        onCancel()
-      } catch (e) {}
+      } catch (e) {
+        console.log('Error occured', e)
+      }
     },
   })
 
@@ -128,6 +130,7 @@ const Edit: React.FC<IEditProps> = ({
                   id="demo-simple-select-placeholder-label"
                   value={field.value}
                   displayEmpty
+                  onChange={formFields.unitId.setValueFromEvent}
                   fullWidth
                 >
                   {units.map((unit) => (

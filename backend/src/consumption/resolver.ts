@@ -11,7 +11,7 @@ class UOM implements IUOM {
 
 @ObjectType()
 class InventoryItem implements IConsumption {
-  @Field()
+  @Field({ nullable: true })
   id: string
   @Field()
   name: string

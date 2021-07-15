@@ -9,7 +9,7 @@ import 'reflect-metadata'
 import { buildSchema } from 'type-graphql'
 import { UserResolver } from './auth/user'
 import { COOKIE_NAME, __prod__ } from './constants'
-import ConsumptionResolver from './consumption/resolver'
+import InventoryResolver from './consumption/resolver'
 import { requestScopeMiddlewareFn } from './RequestScopeMiddleware'
 import { HelloResolver } from './resolvers/hello'
 import { Database, MyContext, MySession, RequestStorage } from './types'
@@ -66,7 +66,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, UserResolver, ConsumptionResolver],
+      resolvers: [HelloResolver, UserResolver, InventoryResolver],
       validate: true,
     }),
     context: ({ req, res }) =>
