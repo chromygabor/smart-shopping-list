@@ -1,9 +1,8 @@
 import '@testing-library/jest-dom'
 import { render, screen } from '@testing-library/react'
-import { useDataResult } from '../common/MyDataResult'
+import { MappedDataResult, useDataResult } from '../common/MyDataResult'
 import userEvent from '@testing-library/user-event'
-
-export interface ITestComponentProps {}
+import { useEffect } from 'react'
 
 type State = {
   text: string
@@ -14,41 +13,104 @@ type Payload = {
   text: string
 }
 
-const TestComponent: React.FC<ITestComponentProps> = (
-  props: ITestComponentProps
-) => {
-  const { completed, failure, state } = useDataResult<State, Payload>(
+export interface ITestComponentProps<T> {
+  setOutput: (state: MappedDataResult<T, Payload>) => void
+  mapper: (state: State) => T
+}
+
+const TestComponent: React.FC<ITestComponentProps<State>> = ({
+  setOutput,
+  mapper,
+}: ITestComponentProps<State>) => {
+  const { completed, failure, setLoading, state } = useDataResult<
+    State,
+    Payload
+  >(
     {
       text: 'This the payload',
     },
-    true
+    false
   )
 
   const handleClick = (params) => {
-    // if (state.data) {
-    //   failure(new Error('Test'))
-    // } else {
-    //   completed({
-    //     text: 'completed',
-    //     number: 10,
-    //   })
-    // }
-    console.log('HandleClick')
+    if (state.data) {
+      failure(new Error('Test'))
+    } else {
+      completed({
+        text: 'completed',
+        number: 10,
+      })
+    }
   }
+
+  const mapped = state.map(mapper)
+  useEffect(() => setOutput(mapped), [mapped])
 
   return (
     <>
-      <button onClick={handleClick}>Click me</button>
+      <button onClick={() => setLoading()}>Loading</button>
+      <button
+        onClick={() =>
+          completed({
+            text: 'completed',
+            number: 10,
+          })
+        }
+      >
+        Complete
+      </button>
+      <button onClick={() => failure(new Error('test'))}>Failure</button>
     </>
   )
 }
 
-describe('Page', () => {
-  render(<TestComponent />)
+describe('DataResult', () => {
+  var output: MappedDataResult<State, Payload>
 
-  const button = screen.getByText('Click me')
+  it('should be initialized to proper values', () => {
+    render(
+      <TestComponent
+        setOutput={(state) => (output = state)}
+        mapper={(state: State) => ({
+          text: state.text + ' mapped',
+          number: state.number * 10,
+        })}
+      />
+    )
 
-  it('should be rendered', async () => {
-    userEvent.click(button)
+    const loading = screen.getByText('Loading')
+    const complete = screen.getByText('Complete')
+    const failure = screen.getByText('Failure')
+
+    //userEvent.click(button)
+    expect(output.isLoading).toBe(false)
+    expect(output.payload).toStrictEqual({ text: 'This the payload' })
+    expect(output.data).toBe(undefined)
+    expect(output.error).toBe(undefined)
+    expect(output.prevData).toBe(undefined)
+    console.log(output)
+  })
+
+  it('should be modify to loading', () => {
+    render(
+      <TestComponent
+        setOutput={(state) => (output = state)}
+        mapper={(state: State) => ({
+          text: state.text + ' mapped',
+          number: state.number * 10,
+        })}
+      />
+    )
+
+    const loading = screen.getByText('Loading')
+    const complete = screen.getByText('Complete')
+    const failure = screen.getByText('Failure')
+    userEvent.click(loading)
+    expect(output.isLoading).toBe(true)
+    expect(output.payload).toStrictEqual({ text: 'This the payload' })
+    expect(output.data).toBe(undefined)
+    expect(output.error).toBe(undefined)
+    expect(output.prevData).toBe(undefined)
+    console.log(output)
   })
 })
