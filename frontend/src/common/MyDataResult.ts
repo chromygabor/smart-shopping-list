@@ -1,14 +1,21 @@
 import { Dispatch, SetStateAction, useState } from 'react'
+import _ from 'underscore'
 
-class PrevData<T> {
-  constructor(public data: T, public prevData?: PrevData<T>) {}
+// class PrevData<T> {
+//   constructor(public data: T, public prevData?: PrevData<T>) {}
 
-  map<T2>(fn: (s: T) => T2): PrevData<T2> {
-    return new PrevData(
-      fn(this.data),
-      this.prevData ? this.prevData.map(fn) : undefined
-    )
-  }
+//   map<T2>(fn: (s: T) => T2): PrevData<T2> {
+//     return new PrevData(
+//       fn(this.data),
+//       this.prevData ? this.prevData.map(fn) : undefined
+//     )
+//   }
+// }
+
+export type State<T, P> = {
+  isLoading: boolean
+  payload?: P
+  data?: T | Error
 }
 
 type FoldFnCallbackRes<T, T1, T2, T3> = {
@@ -17,121 +24,122 @@ type FoldFnCallbackRes<T, T1, T2, T3> = {
   onFailure?: (failure: Error) => T3
 }
 
-type FoldFnCallbackReq<T, P> = {
-  prevData: PrevData<T>
-  payload: P
-}
+export class DataResult<T, P> {
+  constructor(public state: () => State<T, P>) {}
 
-export type FoldFn<T, P, T1, T2, T3> = (
-  input: FoldFnCallbackReq<T, P>
-) => FoldFnCallbackRes<T, T1, T2, T3>
+  public map<T2>(fn: (s: T) => T2): DataResult<T2, P> {
+    return new DataResult(() => {
+      const { isLoading, payload, data } = this.state()
 
-export class MappedDataResult<T, P> {
-  constructor(
-    public isLoading: boolean,
-    public payload?: P,
-    public data?: T,
-    public prevData?: PrevData<T>,
-    public error?: Error
-  ) {}
-
-  public map<T2>(fn: (s: T) => T2): MappedDataResult<T2, P> {
-    return new MappedDataResult(
-      this.isLoading,
-      this.payload,
-      this.data ? fn(this.data) : undefined,
-      this.prevData ? this.prevData.map(fn) : undefined,
-      this.error
-    )
+      return {
+        isLoading,
+        payload,
+        data: data ? (_.isError(data) ? data : fn(data)) : undefined,
+      }
+    })
   }
 
-  public fold<T2, T3, T4>(fn: FoldFn<T, P, T2, T3, T4>): T2 | T3 | T4 {
-    const r = fn({ prevData: this.prevData, payload: this.payload })
-    if (this.data) return r.onSuccess(this.data)
-    else if (this.isLoading) return r.onLoading()
-    else if (this.error) return r.onFailure(this.error)
+  public zip<T2, P2>(dr2: DataResult<T2, P2>): DataResult<[T, T2], [P, P2]> {
+    // return new DataResult(() => {
+    //   const currentState = this.state()
+    //   return {
+    //     isLoading: isLoading,
+    //     payload: payload,
+    //     error: error,
+    //     data: data ? fn(data) : undefined,
+    //   }
+    // })
+    throw new Error('Not implemented yet')
+  }
+
+  public fold<T2, T3, T4>(
+    fn: (input: { payload: P }) => FoldFnCallbackRes<T, T2, T3, T4>
+  ): T2 | T3 | T4 {
+    const { payload, data, isLoading } = this.state()
+
+    const r = fn({ payload })
+    if (data && !_.isError(data)) return r.onSuccess(data)
+    else if (isLoading) return r.onLoading()
+    else if (data && _.isError(data)) return r.onFailure(data)
   }
 
   public onSuccess<T1>(
-    fn: (data: FoldFnCallbackReq<T, P> & { data: T }) => T1
+    fn: (data: { payload: P; data: T }) => T1
   ): T1 | undefined {
-    return this.data
-      ? fn({ data: this.data, payload: this.payload, prevData: this.prevData })
-      : undefined
+    const { payload, data } = this.state()
+
+    return data && !_.isError(data) ? fn({ data, payload }) : undefined
   }
 
-  public onLoading<T1>(
-    fn: (data: FoldFnCallbackReq<T, P>) => T1
-  ): T1 | undefined {
-    return this.isLoading
-      ? fn({ prevData: this.prevData, payload: this.payload })
-      : undefined
+  public onLoading<T1>(fn: (data: { payload: P }) => T1): T1 | undefined {
+    const { payload, isLoading } = this.state()
+    return isLoading ? fn({ payload }) : undefined
   }
 
   public onFailure<T1>(
-    fn: (data: FoldFnCallbackReq<T, P> & { error: Error }) => T1
+    fn: (data: { payload: P; error: Error }) => T1
   ): T1 | undefined {
-    return this.error
+    const { payload, data } = this.state()
+    return data && _.isError(data)
       ? fn({
-          error: this.error,
-          payload: this.payload,
-          prevData: this.prevData,
+          error: data,
+          payload,
         })
       : undefined
   }
 }
 
-export function useDataResult<T, Payload>(
-  payload: Payload,
-  loading?: boolean,
-  data?: T,
-  prevData?: PrevData<T>,
-  error?: Error
+export function mutableDataResult<T, P>(
+  state: () => State<T, P>,
+  setState: (state: State<T, P>) => void
 ) {
-  const [state, setState] = useState<MappedDataResult<T, Payload>>(
-    new MappedDataResult(loading, payload, data, prevData, error)
-  )
+  const emit = (data: T) => {
+    const { payload } = state()
 
-  const completed = (data: T) => {
-    setState(
-      new MappedDataResult(
-        false,
-        state.payload,
-        data,
-        state.data ? new PrevData(state.data, state.prevData) : state.prevData,
-        undefined
-      )
-    )
+    setState({
+      isLoading: false,
+      payload,
+      data,
+    })
   }
 
-  const setLoading = () => {
-    setState(
-      new MappedDataResult(
-        true,
-        state.payload,
-        undefined,
-        state.data ? new PrevData(state.data, state.prevData) : state.prevData,
-        undefined
-      )
-    )
+  const loading = () => {
+    const { payload, data } = state()
+
+    setState({
+      isLoading: true,
+      payload,
+      data,
+    })
   }
 
-  const failure = (error: Error) => {
-    setState(
-      new MappedDataResult(
-        false,
-        state.payload,
-        undefined,
-        state.data ? new PrevData(state.data, state.prevData) : state.prevData,
-        error
-      )
-    )
+  const failure = (failure: Error) => {
+    const { payload, isLoading } = state()
+
+    setState({
+      isLoading,
+      payload,
+      data: failure,
+    })
   }
 
   return {
-    state,
-    completed,
+    dataResult: new DataResult<T, P>(state),
+    emit,
     failure,
-    setLoading,
+    loading,
   }
 }
+
+// export function useDataResult<T, Payload>(
+//   payload: Payload,
+//   loading?: boolean,
+//   data?: T
+//   error?: Error
+// ) {
+//   const [state, setState] = useState<DataResult<T, Payload>>(
+//     new DataResult(loading, payload, data, prevData, error)
+//   )
+
+//   return mutableDataResult(() => state, setState)
+// }

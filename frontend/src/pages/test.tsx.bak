@@ -1,5 +1,5 @@
 import { Button } from '@material-ui/core'
-import { FoldFn, useDataResult } from 'common/MyDataResult'
+import { FoldFn, useDataResult } from '../common/MyDataResult'
 // import { makeDataResult } from 'common/MyDataResult'
 import * as React from 'react'
 import { useState } from 'react'
