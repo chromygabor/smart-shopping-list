@@ -1,6 +1,8 @@
-import { makeDataResult, DataResult } from 'common/DataResult'
+import { DataStream } from 'common/DataStream'
+import { makeDataStream } from 'common/react-data-result'
 import { InventoryItem, Uom } from 'generated/graphql'
 import { useState } from 'react'
+import _ from 'underscore'
 
 export type QueryResult = {}
 
@@ -13,9 +15,9 @@ export type UIInventoryItem = InventoryItem & {
 }
 
 export type Inventory = {
-  items: DataResult<UIInventoryItem[], QueryResult>
+  items: DataStream<UIInventoryItem[], QueryResult>
   emptyItem: UIInventoryItem
-  units: DataResult<Uom[], QueryResult>
+  units: DataStream<Uom[], QueryResult>
 }
 
 const mockUnits: Uom[] = [
@@ -69,131 +71,145 @@ const emptyItem = {
 }
 
 export const useInventory = (): Inventory => {
-  const [dataResult, setDataResult] = useState<
-    DataResult<UIInventoryItem[], {}>
-  >(() => {
+  const strItems = makeDataStream<UIInventoryItem[], {}>(() => {
     setTimeout(() => {
       if (Math.random() < 0.2) {
-        setDataResult((items) => {
-          return items.failure(new Error('Just a test error'))
-        })
+        strItems.failure(new Error('Just a test error'))
       } else {
-        setDataResult((items) => {
-          return items.completed(mockItems.map((dataPoint) => make(dataPoint)))
-        })
-      }
-    }, Math.random() * 3000)
-
-    return makeDataResult()
-  })
-
-  const [units, setUnits] = useState<DataResult<Uom[], {}>>(() => {
-    setTimeout(() => {
-      if (Math.random() < 0.2) {
-        setUnits((units) => {
-          return units.failure(new Error('Just a test error'))
-        })
-      } else {
-        setUnits((units) => {
-          return units.completed(mockUnits)
-        })
-      }
-    }, Math.random() * 3000)
-
-    return makeDataResult()
-  })
-
-  const make = (inventoryItem: InventoryItem | undefined): UIInventoryItem => {
-    const update = (record: Partial<InventoryItem>): void => {
-      if (inventoryItem) {
-        setDataResult(() =>
-          dataResult.map((inventoryItems) =>
-            inventoryItems.map((uiInventoryItem) => {
-              if (uiInventoryItem.id === inventoryItem.id) {
-                return {
-                  ...uiInventoryItem,
-                  ...record,
-                  unit: mockUnits.find((unit) => unit.id === record.unitId),
-                }
-              } else return uiInventoryItem
-            })
-          )
+        strItems.emit(
+          mockItems.map((dataPoint) => makeUIInventoryItem(dataPoint))
         )
-      } else {
-        //throw new Error('Test error')
       }
+    }, Math.random() * 3000)
+
+    return {
+      isLoading: true,
+    }
+  })
+
+  const units = makeDataStream<Uom[], {}>(() => {
+    setTimeout(() => {
+      if (Math.random() < 0.2) {
+        units.failure(new Error('Just a test error'))
+      } else {
+        units.emit(mockUnits)
+      }
+    }, Math.random() * 3000)
+    return {
+      isLoading: true,
+    }
+  })
+
+  const makeUIInventoryItem = (
+    inventoryItem: InventoryItem | undefined
+  ): UIInventoryItem => {
+    const strItemsState = strItems.state()
+
+    const itemLoading = makeDataStream<{}, {}>(() => ({}))
+
+    const strItem = makeDataStream<UIInventoryItem, {}>(() => ({
+      isLoading: strItemsState.isLoading,
+      data: strItemsState.data
+        ? _.isError(strItemsState.data)
+          ? strItemsState.data
+          : strItemsState.data.find((item) => item.id === inventoryItem.id)
+        : undefined,
+    }))
+
+    const update = async (
+      record: Partial<InventoryItem>
+    ): Promise<UIInventoryItem> => {
+      return new Promise<UIInventoryItem>((resolve, reject) => {})
+      // if (inventoryItem) {
+      //   setTimeout(() => {}, Math.random() * 3000)
+      //   // setDataResult(() =>
+      //   //   dataResult.map((inventoryItems) =>
+      //   //     inventoryItems.map((uiInventoryItem) => {
+      //   //       if (uiInventoryItem.id === inventoryItem.id) {
+      //   //         return {
+      //   //           ...uiInventoryItem,
+      //   //           ...record,
+      //   //           unit: mockUnits.find((unit) => unit.id === record.unitId),
+      //   //         }
+      //   //       } else return uiInventoryItem
+      //   //     })
+      //   //   )
+      //   // )
+      // } else {
+      //   //throw new Error('Test error')
+      // }
     }
 
     const done = () => {
-      if (inventoryItem) {
-        if (
-          dataResult.data.some(
-            (uiInventoryItem) =>
-              uiInventoryItem.id === inventoryItem.id &&
-              uiInventoryItem.qty === 0
-          )
-        ) {
-          throw new Error('Quantity is already 0')
-        }
-        setDataResult(() =>
-          dataResult.map((uiInventoryItems) =>
-            uiInventoryItems.map((uiInventoryItem) => {
-              if (uiInventoryItem.id === inventoryItem.id) {
-                return {
-                  ...uiInventoryItem,
-                  qty: uiInventoryItem.qty - 1,
-                }
-              } else return uiInventoryItem
-            })
-          )
-        )
-      }
+      // if (inventoryItem) {
+      //   if (
+      //     dataResult.data.some(
+      //       (uiInventoryItem) =>
+      //         uiInventoryItem.id === inventoryItem.id &&
+      //         uiInventoryItem.qty === 0
+      //     )
+      //   ) {
+      //     throw new Error('Quantity is already 0')
+      //   }
+      //   setDataResult(() =>
+      //     dataResult.map((uiInventoryItems) =>
+      //       uiInventoryItems.map((uiInventoryItem) => {
+      //         if (uiInventoryItem.id === inventoryItem.id) {
+      //           return {
+      //             ...uiInventoryItem,
+      //             qty: uiInventoryItem.qty - 1,
+      //           }
+      //         } else return uiInventoryItem
+      //       })
+      //     )
+      //   )
+      // }
     }
 
     const doneAll = () => {
-      if (inventoryItem) {
-        setDataResult(() =>
-          dataResult.map((uiInventoryItems) =>
-            uiInventoryItems.map((uiInventoryItem) => {
-              if (uiInventoryItem.id === inventoryItem.id) {
-                return {
-                  ...uiInventoryItem,
-                  qty: 0,
-                }
-              } else return uiInventoryItem
-            })
-          )
-        )
-      }
+      // if (inventoryItem) {
+      //   setDataResult(() =>
+      //     dataResult.map((uiInventoryItems) =>
+      //       uiInventoryItems.map((uiInventoryItem) => {
+      //         if (uiInventoryItem.id === inventoryItem.id) {
+      //           return {
+      //             ...uiInventoryItem,
+      //             qty: 0,
+      //           }
+      //         } else return uiInventoryItem
+      //       })
+      //     )
+      //   )
+      // }
     }
 
     const add = () => {
-      if (inventoryItem) {
-        setDataResult(() =>
-          dataResult.map((uiInventoryItems) =>
-            uiInventoryItems.map((uiInventoryItem) => {
-              if (uiInventoryItem.id === inventoryItem.id) {
-                return {
-                  ...uiInventoryItem,
-                  qty: uiInventoryItem.qty + 1,
-                }
-              } else return uiInventoryItem
-            })
-          )
-        )
-      }
+      // if (inventoryItem) {
+      //   setDataResult(() =>
+      //     dataResult.map((uiInventoryItems) =>
+      //       uiInventoryItems.map((uiInventoryItem) => {
+      //         if (uiInventoryItem.id === inventoryItem.id) {
+      //           return {
+      //             ...uiInventoryItem,
+      //             qty: uiInventoryItem.qty + 1,
+      //           }
+      //         } else return uiInventoryItem
+      //       })
+      //     )
+      //   )
+      // }
     }
 
     const remove = () => {
-      if (inventoryItem) {
-        setDataResult(() =>
-          dataResult.map((uiInventoryItems) =>
-            uiInventoryItems.filter(
-              (uiInventoryItem) => uiInventoryItem.id !== inventoryItem.id
-            )
-          )
-        )
-      }
+      // if (inventoryItem) {
+      //   setDataResult(() =>
+      //     dataResult.map((uiInventoryItems) =>
+      //       uiInventoryItems.filter(
+      //         (uiInventoryItem) => uiInventoryItem.id !== inventoryItem.id
+      //       )
+      //     )
+      //   )
+      // }
     }
 
     return {
@@ -209,6 +225,6 @@ export const useInventory = (): Inventory => {
   return {
     units,
     items: dataResult,
-    emptyItem: make(undefined),
+    emptyItem: makeUIInventoryItem(undefined),
   }
 }

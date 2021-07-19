@@ -1,10 +1,10 @@
-import jest from 'jest'
-import { identity } from 'lodash'
 import {
-  DataResult,
-  mutableDataResult,
+  DataStream,
+  dataStream,
+  MutableDataStream,
   State as Container,
-} from '../common/MyDataResult'
+} from '../common/DataStream'
+import _ from 'underscore'
 
 type State = {
   text: string
@@ -15,230 +15,322 @@ type Payload = {
   text: string
 }
 
-const initalizeDataResult = (
-  initState: Container<State, Payload> = {
-    isLoading: false,
-    payload: { text: 'This the payload' },
+function createMutableDataStream<T, P>(input?: {
+  payload?: P
+  isLoading?: boolean
+  data?: T
+}) {
+  var container: Container<T, P> = {
+    isLoading: input?.isLoading,
+    payload: input?.payload,
+    data: input?.data,
   }
-) => {
-  var container = initState
 
-  return mutableDataResult(
+  return dataStream(
     () => {
       return container
     },
-    (_container: Container<State, Payload>) => {
+    (_container: Container<T, P>) => {
       container = _container
     }
   )
 }
 
+const initalizeDataResult = (input?: {
+  payload?: Payload
+  isLoading?: boolean
+  data?: State
+}) => {
+  return createMutableDataStream({
+    isLoading: input?.isLoading ? input.isLoading : false,
+    payload: input?.payload ? input.payload : { text: 'This the payload' },
+    data: input?.data,
+  })
+}
+
+describe('DataResult ', () => {
+  it('should work with complex use case', () => {
+    const ds1 = createMutableDataStream<State[], {}>()
+
+    var container: Container<State, {}> | undefined = undefined
+
+    const ds2 = dataStream(
+      () => {
+        const currentState = ds1.map((input) => input[0]).state()
+        return {
+          isLoading: container?.isLoading || currentState.isLoading,
+          data: container?.isLoading
+            ? undefined
+            : container?.data
+            ? _.isError(container.data)
+              ? container.data
+              : currentState.data
+            : currentState.data,
+        }
+      },
+      (_container: Container<State, {}>) => {
+        container = _container
+      }
+    )
+
+    ds1.loading()
+
+    expect(ds2.state().isLoading).toBe(true)
+    expect(ds2.state().data).toBe(undefined)
+
+    ds1.emit([
+      { text: 'item 1', number: 1 },
+      { text: 'item 2', number: 2 },
+      { text: 'item 3', number: 3 },
+    ])
+
+    expect(ds2.state().isLoading).toBe(false)
+    expect(ds2.state().data).toStrictEqual({ text: 'item 1', number: 1 })
+
+    ds2.loading()
+
+    expect(ds2.state().isLoading).toBe(true)
+    expect(ds2.state().data).toBe(undefined)
+
+    ds1.emit([
+      { text: 'item 1', number: 1 },
+      { text: 'item 2', number: 2 },
+      { text: 'item 3', number: 3 },
+    ])
+
+    expect(ds2.state().isLoading).toBe(false)
+    expect(ds2.state().data).toStrictEqual({ text: 'item 1', number: 1 })
+  })
+})
+
 describe('DataResult', () => {
   it('should return isLoading if loading was called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
+    const dataStream = initalizeDataResult()
 
-    loading()
+    dataStream.loading()
 
-    const { isLoading, data } = dataResult.state()
+    const { isLoading, data, payload } = dataStream.state()
 
     expect(isLoading).toBe(true)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
     expect(data).toBe(undefined)
   })
 
-  it('should return data if emit was called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    loading()
-
-    const { isLoading, data } = dataResult.state()
-
-    expect(isLoading).toBe(true)
-    expect(data).toBe(undefined)
-  })
-
-  it("shouldn't call any onXXX if no mutate function called", () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    loadingOut = dataResult.onLoading(identity)
-    successOut = dataResult.onSuccess(identity)
-    failureOut = dataResult.onFailure(identity)
-
-    expect(loadingOut).toBe(undefined)
-    expect(successOut).toBe(undefined)
-    expect(failureOut).toBe(undefined)
-  })
-
-  it('should call any onLoading if loading is called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    loading()
-
-    loadingOut = dataResult.onLoading(identity)
-    successOut = dataResult.onSuccess(identity)
-    failureOut = dataResult.onFailure(identity)
-
-    expect(loadingOut).toStrictEqual({ payload: { text: 'This the payload' } })
-    expect(successOut).toBe(undefined)
-    expect(failureOut).toBe(undefined)
-  })
-
-  it('should call any onSuccess if complete is called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    emit({
-      text: 'emit',
-      number: 10,
-    })
-
-    loadingOut = dataResult.onLoading(identity)
-    successOut = dataResult.onSuccess(identity)
-    failureOut = dataResult.onFailure(identity)
-
-    expect(loadingOut).toBe(undefined)
-    expect(successOut).toStrictEqual({
-      payload: { text: 'This the payload' },
+  it('should return isLoading and data undefined if loading was called', () => {
+    const dataStream = initalizeDataResult({
       data: {
         text: 'emit',
         number: 10,
       },
+      isLoading: false,
+      payload: { text: 'This the payload' },
     })
-    expect(failureOut).toBe(undefined)
+
+    dataStream.loading()
+
+    const { isLoading, data, payload } = dataStream.state()
+
+    expect(isLoading).toBe(true)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
+    expect(data).toBe(undefined)
   })
 
-  it('should call any onError if error is called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
+  it('should return data and isLoading=false if emit was called', () => {
+    const dataStream = initalizeDataResult()
 
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    failure(new Error('Test error'))
-
-    loadingOut = dataResult.onLoading(identity)
-    successOut = dataResult.onSuccess(identity)
-    failureOut = dataResult.onFailure(identity)
-
-    expect(loadingOut).toBe(undefined)
-    expect(successOut).toBe(undefined)
-
-    expect(failureOut).not.toBe(undefined)
-    expect(failureOut.error).not.toBe(undefined)
-    expect(failureOut.error.message).toBe('Test error')
-  })
-})
-
-describe('DataResult.map', () => {
-  it("shouldn't call any onXXX if no mutate function called", () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    const mapped = dataResult.map((state) => ({
-      text: state.text + ' mapped',
-      number: state.number * 10,
-    }))
-
-    loadingOut = mapped.onLoading(identity)
-    successOut = mapped.onSuccess(identity)
-    failureOut = mapped.onFailure(identity)
-
-    expect(loadingOut).toBe(undefined)
-    expect(successOut).toBe(undefined)
-    expect(failureOut).toBe(undefined)
-  })
-
-  it('should call any onLoading if loading is called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    const mapped = dataResult.map((state) => ({
-      text: state.text + ' mapped',
-      number: state.number * 10,
-    }))
-
-    loading()
-
-    loadingOut = mapped.onLoading(identity)
-    successOut = mapped.onSuccess(identity)
-    failureOut = mapped.onFailure(identity)
-
-    expect(loadingOut).toStrictEqual({ payload: { text: 'This the payload' } })
-    expect(successOut).toBe(undefined)
-    expect(failureOut).toBe(undefined)
-  })
-
-  it('should call any onSuccess if complete is called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
-
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
-
-    const mapped = dataResult.map((state) => ({
-      text: state.text + ' mapped',
-      number: state.number * 10,
-    }))
-
-    emit({
+    dataStream.emit({
       text: 'emit',
       number: 10,
     })
 
-    loadingOut = mapped.onLoading(identity)
-    successOut = mapped.onSuccess(identity)
-    failureOut = mapped.onFailure(identity)
+    const { isLoading, data, payload } = dataStream.state()
 
-    expect(loadingOut).toBe(undefined)
-    expect(successOut).toStrictEqual({
-      payload: { text: 'This the payload' },
-      data: {
-        text: 'emit mapped',
-        number: 100,
-      },
+    expect(isLoading).toBe(false)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
+    expect(data).toStrictEqual({
+      text: 'emit',
+      number: 10,
     })
-    expect(failureOut).toBe(undefined)
   })
 
-  it('should call any onError if error is called', () => {
-    const { emit, loading, failure, dataResult } = initalizeDataResult()
+  it('should return error in the data and isLoading=false if failure was called', () => {
+    const dataStream = initalizeDataResult()
 
-    var loadingOut: { payload: Payload } | undefined = undefined
-    var successOut: { payload: Payload; data: State } | undefined = undefined
-    var failureOut: { payload: Payload; error: Error } | undefined = undefined
+    dataStream.failure(new Error('Test error'))
 
-    const mapped = dataResult.map((state) => ({
-      text: state.text + ' mapped',
-      number: state.number * 10,
+    const { isLoading, data, payload } = dataStream.state()
+
+    expect(isLoading).toBe(false)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
+    expect(data).toBeInstanceOf(Error)
+    expect((data as Error).message).toBe('Test error')
+  })
+})
+
+describe('DataResult.map', () => {
+  it('should return isLoading on mapped stream if loading was called', () => {
+    const dataStream = initalizeDataResult()
+
+    const mapped = dataStream.map((input) => ({
+      text: input.text + ' mapped',
+      number: input.number * 10,
     }))
 
-    failure(new Error('Test error'))
+    dataStream.loading()
 
-    loadingOut = mapped.onLoading(identity)
-    successOut = mapped.onSuccess(identity)
-    failureOut = mapped.onFailure(identity)
+    const { isLoading, data, payload } = mapped.state()
 
-    expect(loadingOut).toBe(undefined)
-    expect(successOut).toBe(undefined)
+    expect(isLoading).toBe(true)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
+    expect(data).toBe(undefined)
+  })
 
-    expect(failureOut).not.toBe(undefined)
-    expect(failureOut.error).not.toBe(undefined)
-    expect(failureOut.error.message).toBe('Test error')
+  it('should return mapped data on mapped stream and isLoading=false if emit was called', () => {
+    const dataStream = initalizeDataResult()
+
+    const mapped = dataStream.map((input) => ({
+      text: input.text + ' mapped',
+      number: input.number * 10,
+    }))
+
+    dataStream.emit({
+      text: 'emit',
+      number: 10,
+    })
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(false)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
+    expect(data).toStrictEqual({
+      text: 'emit mapped',
+      number: 100,
+    })
+  })
+
+  it('should return error in the mapped data and isLoading=false if failure was called', () => {
+    const dataStream = initalizeDataResult()
+
+    const mapped = dataStream.map((input) => ({
+      text: input.text + ' mapped',
+      number: input.number * 10,
+    }))
+
+    dataStream.failure(new Error('Test error'))
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(false)
+    expect(payload).toStrictEqual({ text: 'This the payload' })
+    expect(data).toBeInstanceOf(Error)
+    expect((data as Error).message).toBe('Test error')
+  })
+})
+
+describe('DataResult.and', () => {
+  it('should return an appropiate uninitialized state on the downstream', () => {
+    const dataStream1 = initalizeDataResult()
+    const dataStream2 = initalizeDataResult({
+      payload: { text: 'This the payload 2' },
+    })
+
+    const mapped = dataStream1.and(dataStream2)
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(false)
+    expect(data).toBe(undefined)
+    expect(payload).toStrictEqual([
+      { text: 'This the payload' },
+      { text: 'This the payload 2' },
+    ])
+  })
+
+  it('should return an isloading on the underlying stream if the first stream is loading', () => {
+    const dataStream1 = initalizeDataResult()
+    const dataStream2 = initalizeDataResult({
+      payload: { text: 'This the payload 2' },
+    })
+
+    const mapped = dataStream1.and(dataStream2)
+
+    dataStream1.loading()
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(true)
+    expect(data).toBe(undefined)
+    expect(payload).toStrictEqual([
+      { text: 'This the payload' },
+      { text: 'This the payload 2' },
+    ])
+  })
+
+  it('should return an isloading on the underlying stream if the second stream is loading', () => {
+    const dataStream1 = initalizeDataResult()
+    const dataStream2 = initalizeDataResult({
+      data: { text: 'foo', number: 10 },
+      payload: { text: 'This the payload 2' },
+    })
+
+    const mapped = dataStream1.and(dataStream2)
+
+    dataStream2.loading()
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(true)
+    expect(data).toBe(undefined)
+    expect(payload).toStrictEqual([
+      { text: 'This the payload' },
+      { text: 'This the payload 2' },
+    ])
+  })
+
+  it('should return a data on the underlying stream if both the streams are in emited state', () => {
+    const dataStream1 = initalizeDataResult()
+    const dataStream2 = initalizeDataResult({
+      payload: { text: 'This the payload 2' },
+    })
+
+    const mapped = dataStream1.and(dataStream2)
+
+    dataStream1.emit({ text: 'foo', number: 10 })
+    dataStream2.emit({ text: 'bor', number: 20 })
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(false)
+    expect(data).toStrictEqual([
+      { text: 'foo', number: 10 },
+      { text: 'bor', number: 20 },
+    ])
+    expect(payload).toStrictEqual([
+      { text: 'This the payload' },
+      { text: 'This the payload 2' },
+    ])
+  })
+
+  it('should return a failure on the underlying stream if any the streams are in failure state', () => {
+    const dataStream1 = initalizeDataResult()
+    const dataStream2 = initalizeDataResult({
+      payload: { text: 'This the payload 2' },
+    })
+
+    const mapped = dataStream1.and(dataStream2)
+
+    dataStream1.emit({ text: 'foo', number: 10 })
+    dataStream2.failure(new Error('Test error'))
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(false)
+    expect(data).toBeInstanceOf(Error)
+    expect((data as Error).message).toBe('Test error')
+
+    expect(payload).toStrictEqual([
+      { text: 'This the payload' },
+      { text: 'This the payload 2' },
+    ])
   })
 })

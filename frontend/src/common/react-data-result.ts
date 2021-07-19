@@ -1,19 +1,23 @@
 import { useState } from 'react'
-import { DataResult, State as Container } from '../common/MyDataResult'
-import { mutableDataResult } from './MyDataResult'
+import { DataStream, State as Container, dataStream } from './DataStream'
 
-export function makeDataStream<T, P>(input: {
-  payload?: P
-  isLoading?: boolean
-  data?: T
-}) {
-  const [container, setContainer] = useState<Container<T, P>>({
-    isLoading: input.isLoading ? input.isLoading : false,
-    payload: input.payload,
-    data: input.data,
+export function makeDataStream<T, P>(
+  i: () => {
+    payload?: P
+    isLoading?: boolean
+    data?: T | Error
+  }
+) {
+  const [container, setContainer] = useState<Container<T, P>>(() => {
+    const input = i()
+    return {
+      isLoading: input.isLoading ? input.isLoading : false,
+      payload: input.payload,
+      data: input.data,
+    }
   })
 
-  return mutableDataResult(
+  return dataStream(
     () => {
       return container
     },
@@ -23,6 +27,6 @@ export function makeDataStream<T, P>(input: {
   )
 }
 
-export function useDataStream<T, P>(dataStream: DataResult<T, P>) {
+export function useDataStream<T, P>(dataStream: DataStream<T, P>) {
   return dataStream.state()
 }
