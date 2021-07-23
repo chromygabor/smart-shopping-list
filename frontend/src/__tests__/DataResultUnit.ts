@@ -1,10 +1,10 @@
+import _ from 'underscore'
 import {
-  DataStream,
   dataStream,
   MutableDataStream,
   State as Container,
 } from '../common/DataStream'
-import _ from 'underscore'
+import { Lens } from 'monocle-ts'
 
 type State = {
   text: string
@@ -24,6 +24,7 @@ function createMutableDataStream<T, P>(input?: {
     isLoading: input?.isLoading,
     payload: input?.payload,
     data: input?.data,
+    version: 0,
   }
 
   return dataStream(
@@ -52,26 +53,17 @@ describe('DataResult ', () => {
   it('should work with complex use case', () => {
     const ds1 = createMutableDataStream<State[], {}>()
 
-    var container: Container<State, {}> | undefined = undefined
+    var container: Container<State, {}> = {
+      isLoading: false,
+      version: 0,
+    }
 
-    const ds2 = dataStream(
-      () => {
-        const currentState = ds1.map((input) => input[0]).state()
-        return {
-          isLoading: container?.isLoading || currentState.isLoading,
-          data: container?.isLoading
-            ? undefined
-            : container?.data
-            ? _.isError(container.data)
-              ? container.data
-              : currentState.data
-            : currentState.data,
-        }
-      },
-      (_container: Container<State, {}>) => {
-        container = _container
-      }
-    )
+    const state = () => container
+    const setState = (_container: Container<State, {}>) => {
+      container = _container
+    }
+
+    const ds2 = ds1.map((input: State[]) => input[0]).toMutable(state, setState)
 
     ds1.loading()
 
@@ -92,14 +84,26 @@ describe('DataResult ', () => {
     expect(ds2.state().isLoading).toBe(true)
     expect(ds2.state().data).toBe(undefined)
 
+    ds2.emit({ text: 'item 1', number: 100 })
+
+    expect(ds2.state().isLoading).toBe(false)
+    expect(ds2.state().data).toStrictEqual({ text: 'item 1', number: 100 })
+
+    ds1.loading()
     ds1.emit([
-      { text: 'item 1', number: 1 },
-      { text: 'item 2', number: 2 },
-      { text: 'item 3', number: 3 },
+      { text: 'item 1', number: 10 },
+      { text: 'item 2', number: 20 },
+      { text: 'item 3', number: 30 },
     ])
 
     expect(ds2.state().isLoading).toBe(false)
-    expect(ds2.state().data).toStrictEqual({ text: 'item 1', number: 1 })
+    expect(ds2.state().data).toStrictEqual({ text: 'item 1', number: 10 })
+
+    ds1.loading()
+    ds1.failure(new Error('Test error'))
+
+    expect(ds2.state().isLoading).toBe(false)
+    expect(ds2.state().data).toBeInstanceOf(Error)
   })
 })
 
@@ -311,7 +315,7 @@ describe('DataResult.and', () => {
     ])
   })
 
-  it('should return a failure on the underlying stream if any the streams are in failure state', () => {
+  it('should return a failure on the underlying stream if one of the streams are in failure state', () => {
     const dataStream1 = initalizeDataResult()
     const dataStream2 = initalizeDataResult({
       payload: { text: 'This the payload 2' },
@@ -321,6 +325,29 @@ describe('DataResult.and', () => {
 
     dataStream1.emit({ text: 'foo', number: 10 })
     dataStream2.failure(new Error('Test error'))
+
+    const { isLoading, data, payload } = mapped.state()
+
+    expect(isLoading).toBe(false)
+    expect(data).toBeInstanceOf(Error)
+    expect((data as Error).message).toBe('Test error')
+
+    expect(payload).toStrictEqual([
+      { text: 'This the payload' },
+      { text: 'This the payload 2' },
+    ])
+  })
+
+  it('should return a failure on the underlying stream if other of the streams are in failure state', () => {
+    const dataStream1 = initalizeDataResult()
+    const dataStream2 = initalizeDataResult({
+      payload: { text: 'This the payload 2' },
+    })
+
+    const mapped = dataStream1.and(dataStream2)
+
+    dataStream1.failure(new Error('Test error'))
+    dataStream2.emit({ text: 'foo', number: 10 })
 
     const { isLoading, data, payload } = mapped.state()
 

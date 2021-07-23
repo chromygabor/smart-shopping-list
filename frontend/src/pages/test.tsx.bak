@@ -1,67 +1,39 @@
-import { Button } from '@material-ui/core'
-import { FoldFn, useDataResult } from '../common/MyDataResult'
-// import { makeDataResult } from 'common/MyDataResult'
-import * as React from 'react'
-import { useState } from 'react'
+// import { Button } from '@material-ui/core'
+// // import { makeDataResult } from 'common/MyDataResult'
+// import * as React from 'react'
+// import { useState } from 'react'
+// import LensStream from '../common/LensStream'
+// import { Lens } from 'monocle-ts'
 
-type State = {
-  text: string
-  number: number
-}
+// interface Street {
+//   num: number
+//   name: string
+// }
+// interface Address {
+//   city: string
+//   street: Street
+// }
+// interface Company {
+//   name: string
+//   address: Address
+// }
+// interface Employee {
+//   name: string
+//   company: Company
+// }
 
-type Payload = {
-  text: string
-}
-export default function Test() {
-  const { completed, failure, state } = useDataResult<State, Payload>(
-    {
-      text: 'This the payload',
-    },
-    true
-  )
+// export default function Test() {
+//   const handleClick = (params) => {}
 
-  const mapped = state.map((ds) => ({
-    text: ds.text + ' mapped',
-    number: ds.number * 10,
-  }))
+//   const strEmployee = LensStream.create<Employee>()
 
-  console.log('State', state, mapped)
+//   const strName = strEmployee.map(Lens.fromProp<Employee>()('name'))
 
-  const handleClick = (params) => {
-    if (state.data) {
-      failure(new Error('Test'))
-    } else {
-      completed({
-        text: 'completed',
-        number: 10,
-      })
-    }
-  }
-
-  return (
-    <>
-      {mapped.fold(({ payload, prevData }) => ({
-        onSuccess: (data) => (
-          <p>
-            success: {data.text}, {data.number}
-          </p>
-        ),
-        onLoading: () => <p>progress...</p>,
-        onFailure: (failure) => <p>failure: {failure.message}</p>,
-      }))}
-
-      {mapped.onSuccess(({ data }) => (
-        <p>
-          success: {data.text}, {data.number}
-        </p>
-      ))}
-      {mapped.onLoading(({}) => (
-        <p>Loading...</p>
-      ))}
-      {mapped.onFailure(({ error }) => (
-        <p>Error: {error.message}</p>
-      ))}
-      <Button onClick={handleClick}>Click me</Button>
-    </>
-  )
-}
+//   return (
+//     <>
+//       <p>{JSON.stringify(strEmployee)}</p>
+//       <p>{JSON.stringify(strName)}</p>
+//       <Button onClick={handleClick}>Click me</Button>
+//     </>
+//   )
+// }

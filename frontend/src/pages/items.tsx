@@ -1,10 +1,6 @@
-import { QueryResult, UIInventoryItem, useInventory } from '@/api/useInventory'
+import { InventoryItemApi, useInventory } from '@/api/useInventory'
 import Display from '@/components/consumption/item/Display'
 import Edit from '@/components/consumption/item/Edit'
-import {
-  createMonadState,
-  useMonadState,
-} from '@/components/hooks/useMonatState'
 import Layout from '@/components/Layout'
 import {
   Avatar,
@@ -20,10 +16,11 @@ import { makeStyles } from '@material-ui/core/styles'
 import AddIcon from '@material-ui/icons/Add'
 import ListIcon from '@material-ui/icons/List'
 import { Alert, AlertTitle } from '@material-ui/lab'
-import { InventoryItem } from 'generated/graphql'
+import LensStream from 'common/LensStream'
+import { InventoryItem, Uom } from 'generated/graphql'
 import { GetServerSideProps } from 'next'
 import useTranslation from 'next-translate/useTranslation'
-import React, { useState } from 'react'
+import React from 'react'
 
 const useStyles = makeStyles((theme) => ({
   list: {},
@@ -108,48 +105,102 @@ export const getServerSideProps: GetServerSideProps<{}> = async (context) => {
   }
 }
 
+type UIInventoryItem = InventoryItemApi & {
+  editing: boolean
+}
+
+export interface IItemProps {
+  item: InventoryItem
+  strItems: LensStream<InventoryItemApi[]>
+  strUnits: LensStream<Uom[]>
+}
+
+const Item: React.FC<IItemProps> = ({
+  item,
+  strUnits,
+  strItems,
+}: IItemProps) => {
+  const classes = useStyles()
+
+  const strItem = strItems
+    .map((items) => items.find((_item) => item.id === _item.id))
+    .fold<UIInventoryItem>((prev, item) => {
+      const uiInventoryItem: UIInventoryItem = {
+        editing: false,
+        ...(prev ? prev : item),
+      }
+
+      return uiInventoryItem
+    })
+
+  console.log('Item', item.id, JSON.parse(JSON.stringify(strItem.data)))
+
+  const handleEdit = (editing: boolean) => {
+    strItem.emit({
+      ...strItem.data,
+      editing,
+    })
+  }
+
+  //api-ban nincs benne az editing mert az az UIInventoryItemben van
+  const api = strItem.data?.useApi()
+
+  return (
+    <Grid item xs={12} md={6}>
+      <Paper elevation={3} className={classes.paper}>
+        {(strItem.isLoading || strUnits.isLoading) && <CircularProgress />}
+        {(strItem.failure || strUnits.failure) && (
+          <Alert severity="error">
+            <AlertTitle>Error</AlertTitle>
+            {strItems.failure
+              ? strItems.failure.message
+              : strUnits.failure.message}
+          </Alert>
+        )}
+        {api && (
+          <>
+            <Avatar className={classes.avatar}>A</Avatar>
+            {api.editing ? (
+              <Edit
+                item={item}
+                onSave={(record) => {}}
+                onCancel={() => handleEdit(false)}
+                units={strUnits.data}
+              />
+            ) : (
+              <Display
+                item={item}
+                onEditClicked={() => handleEdit(true)}
+                onRemoveClicked={() => {}}
+                onDoneClicked={() => {}}
+                onDoneAllClicked={() => {}}
+                onAddClicked={() => {}}
+              />
+            )}
+          </>
+        )}
+      </Paper>
+    </Grid>
+  )
+}
+
 export default function Index() {
   const classes = useStyles()
 
   const { t } = useTranslation() // default namespace (optional)
 
-  const [edits, setEdits] = useState<string[]>([])
-
   const inventory = useInventory()
 
-  const emptyItem = inventory.emptyItem
-
-  const items = inventory.items
-
-  const units = inventory.units
-
-  const handleEdit = (item: UIInventoryItem, isEdit: boolean) => {
-    if (isEdit) {
-      setEdits((edits) => [...edits, item.id])
-    } else {
-      setEdits((edits) => edits.filter((id) => id !== item.id))
-    }
-  }
-
-  const handleSave = (
-    item: UIInventoryItem,
-    record: Partial<InventoryItem>
-  ): void => {
-    try {
-      item.update(record)
-      handleEdit(item, false)
-    } catch (e) {
-      throw e
-    }
-  }
+  const strItems = inventory.strItems
+  const strUnits = inventory.strUnits
 
   console.log(
-    items.fold({
-      onSuccess: 'success',
-      onFailure: 'failure',
-      onProgress: 'progress',
-    })
+    'Index render',
+    JSON.parse(JSON.stringify(strItems)),
+    JSON.parse(JSON.stringify(strUnits))
   )
+
+  const strItemsAndUnits = strItems.and(strUnits)
 
   return (
     <Layout
@@ -175,23 +226,23 @@ export default function Index() {
           color="secondary"
           aria-label="add"
           className={classes.fab}
-          onClick={() => handleEdit(emptyItem, true)}
+          onClick={() => {}}
         >
           <AddIcon />
         </Fab>
       </Box>
 
       <Box className={classes.futureContainer}>
-        {items.loading ? (
-          <CircularProgress />
-        ) : items.error ? (
+        {strItemsAndUnits.isLoading && <CircularProgress />}
+        {strItemsAndUnits.failure && (
           <Alert severity="error">
             <AlertTitle>Error</AlertTitle>
-            {inventory.items.error.message}
+            {strItemsAndUnits.failure.message}
           </Alert>
-        ) : (
+        )}
+        {strItems.and(strUnits).data && (
           <Grid container>
-            {edits.includes(emptyItem.id) && (
+            {/* {edits.includes(emptyItem.id) && (
               <Grid item xs={12} md={6}>
                 <Paper elevation={3} className={classes.paper}>
                   <Avatar className={classes.avatar}>A</Avatar>
@@ -199,35 +250,20 @@ export default function Index() {
                     item={emptyItem}
                     onSave={emptyItem.update}
                     onCancel={() => handleEdit(emptyItem, false)}
-                    units={units.data}
+                    units={units}
                   />
                 </Paper>
               </Grid>
-            )}
-            {/* {items.data.map((item) => (
-              <Grid item xs={12} md={6}>
-                <Paper elevation={3} className={classes.paper}>
-                  <Avatar className={classes.avatar}>A</Avatar>
-                  {edits.includes(item.id) ? (
-                    <Edit
-                      item={item}
-                      onSave={(record) => handleSave(item, record)}
-                      onCancel={() => handleEdit(item, false)}
-                      units={units.data}
-                    />
-                  ) : (
-                    <Display
-                      item={item}
-                      onEditClicked={() => handleEdit(item, true)}
-                      onRemoveClicked={item.remove}
-                      onDoneClicked={item.done}
-                      onDoneAllClicked={item.doneAll}
-                      onAddClicked={item.add}
-                    />
-                  )}
-                </Paper>
-              </Grid>
-            ))} */}
+            )} */}
+            {strItems.data.map((item) => (
+              <Item
+                key={item.id}
+                item={item}
+                strUnits={strUnits}
+                strItems={strItems}
+              />
+            ))}
+            <p>Items</p>
           </Grid>
         )}
       </Box>
