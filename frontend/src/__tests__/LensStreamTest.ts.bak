@@ -1,6 +1,27 @@
 import { Lens, Getter } from 'monocle-ts'
 import { useStream } from '../common/LensStream'
 import { renderHook, act } from '@testing-library/react-hooks'
+import { useEffect, useState } from 'react'
+
+describe('Playground', () => {
+  it('hooks should call unsubscribe', () => {
+    const { result } = renderHook(() => {
+      const [state1, setState1] = useState(true)
+      const [state2, setState2] = useState(true)
+
+      useEffect(() => {
+        setState2(state1)
+        return () => {
+          console.log('unsubscribe')
+        }
+      }, [state1])
+
+      return { setState1, state2 }
+    })
+  })
+
+  it('apply', () => {})
+})
 
 describe('Stream', () => {
   interface Street {
@@ -36,18 +57,22 @@ describe('Stream', () => {
 
   it('should initialize isLoading if defaultValue is undefined', () => {
     const { result } = renderHook(() => {
-      const strEmployee = useStream<Employee>()
+      const strEmployee = useStream<Employee>({
+        callback: () => {
+          return () => console.log('stream unsubscribe')
+        },
+      })
 
       const strName = strEmployee.map((employee: Employee) => employee.name)
       return { strEmployee, strName }
     })
 
     expect(result.current.strEmployee.isLoading).toBe(true)
-    expect(result.current.strEmployee.data).toBe(undefined)
+    expect(result.current.strEmployee.value).toBe(undefined)
     expect(result.current.strEmployee.failure).toBe(undefined)
 
     expect(result.current.strName.isLoading).toBe(true)
-    expect(result.current.strName.data).toBe(undefined)
+    expect(result.current.strName.value).toBe(undefined)
     expect(result.current.strName.failure).toBe(undefined)
   })
 
@@ -55,8 +80,8 @@ describe('Stream', () => {
     const { result, waitForValueToChange } = renderHook(() => {
       const strEmployee = useStream<Employee>({
         defaultValue,
-        callback: ({ emit }) => {
-          emit({
+        callback: ({ setValue }) => {
+          setValue({
             name: 'Gabor Chromy',
             company: {
               name: 'MSCI',
@@ -77,77 +102,157 @@ describe('Stream', () => {
     })
 
     expect(result.current.strName.isLoading).toBe(false)
-    expect(result.current.strName.data).toBe('Gabor Chromy')
+    expect(result.current.strName.value).toBe('Gabor Chromy')
     expect(result.current.strName.failure).toBe(undefined)
   })
-  describe('.mapB', () => {
-    it('should update upstream ', async () => {
-      const { result } = renderHook(() => {
-        const strEmployee = useStream<Employee>({ defaultValue })
 
-        const strName = strEmployee.mapB(Lens.fromProp<Employee>()('name'))
-        return { strEmployee, strName }
-      })
+  // describe('.mapB', () => {
+  //   it('should update upstream ', async () => {
+  //     const { result } = renderHook(() => {
+  //       const strEmployee = useStream<Employee>({ defaultValue })
 
-      act(() => {
-        result.current.strName.loading()
-      })
+  //       const strName = strEmployee.mapB(Lens.fromProp<Employee>()('name'))
+  //       return { strEmployee, strName }
+  //     })
 
-      expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
-      expect(result.current.strEmployee.failure).toBe(undefined)
+  //     act(() => {
+  //       result.current.strName.loading()
+  //     })
 
-      expect(result.current.strName.isLoading).toBe(true)
-      expect(result.current.strName.data).toBe(undefined)
-      expect(result.current.strName.failure).toBe(undefined)
-    })
+  //     expect(result.current.strEmployee.isLoading).toBe(false)
+  //     expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+  //     expect(result.current.strEmployee.failure).toBe(undefined)
 
-    it('should update upstream ', async () => {
-      const lens = Lens.fromProp<Employee>()('name')
-      const { result } = renderHook(() => {
-        const strEmployee = useStream<Employee>({ defaultValue })
+  //     expect(result.current.strName.isLoading).toBe(true)
+  //     expect(result.current.strName.data).toBe(undefined)
+  //     expect(result.current.strName.failure).toBe(undefined)
+  //   })
 
-        const strName = strEmployee.mapB(lens)
-        return { strEmployee, strName }
-      })
+  //   it('should update upstream ', async () => {
+  //     const lens = Lens.fromProp<Employee>()('name')
+  //     const { result } = renderHook(() => {
+  //       const strEmployee = useStream<Employee>({ defaultValue })
 
-      act(() => {
-        result.current.strName.emit('Gabor Chromy')
-      })
+  //       const strName = strEmployee.mapB(lens)
+  //       return { strEmployee, strName }
+  //     })
 
-      const expectedValue = lens.set('Gabor Chromy')(defaultValue)
+  //     act(() => {
+  //       result.current.strName.emit('Gabor Chromy')
+  //     })
 
-      expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(expectedValue)
-      expect(result.current.strEmployee.failure).toBe(undefined)
+  //     const expectedValue = lens.set('Gabor Chromy')(defaultValue)
 
-      expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe('Gabor Chromy')
-      expect(result.current.strName.failure).toBe(undefined)
-    })
-    it('should update upstream', async () => {
-      const lens = Lens.fromProp<Employee>()('name')
-      const { result } = renderHook(() => {
-        const strEmployee = useStream<Employee>({ defaultValue })
+  //     expect(result.current.strEmployee.isLoading).toBe(false)
+  //     expect(result.current.strEmployee.data).toStrictEqual(expectedValue)
+  //     expect(result.current.strEmployee.failure).toBe(undefined)
 
-        const strName = strEmployee.mapB(lens)
-        return { strEmployee, strName }
-      })
+  //     expect(result.current.strName.isLoading).toBe(false)
+  //     expect(result.current.strName.data).toBe('Gabor Chromy')
+  //     expect(result.current.strName.failure).toBe(undefined)
+  //   })
+  //   it('should update upstream', async () => {
+  //     const lens = Lens.fromProp<Employee>()('name')
+  //     const { result } = renderHook(() => {
+  //       const strEmployee = useStream<Employee>({ defaultValue })
 
-      act(() => {
-        result.current.strName.emit(new Error('Failure test'))
-      })
+  //       const strName = strEmployee.mapB(lens)
+  //       return { strEmployee, strName }
+  //     })
 
-      expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
-      expect(result.current.strEmployee.failure).toBe(undefined)
+  //     act(() => {
+  //       result.current.strName.emit(new Error('Failure test'))
+  //     })
 
-      expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe(undefined)
-      expect(result.current.strName.failure).toBeInstanceOf(Error)
-      expect(result.current.strName.failure.message).toBe('Failure test')
-    })
-  })
+  //     expect(result.current.strEmployee.isLoading).toBe(false)
+  //     expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+  //     expect(result.current.strEmployee.failure).toBe(undefined)
+
+  //     expect(result.current.strName.isLoading).toBe(false)
+  //     expect(result.current.strName.data).toBe(undefined)
+  //     expect(result.current.strName.failure).toBeInstanceOf(Error)
+  //     expect(result.current.strName.failure.message).toBe('Failure test')
+  //   })
+  //   describe('work with more complex cases', () => {
+  //     const defaultValue: Street[] = [
+  //       {
+  //         name: 'Kassák Lajos',
+  //         num: 19,
+  //       },
+  //       {
+  //         name: 'Szíjgyártó',
+  //         num: 10,
+  //       },
+  //       {
+  //         name: 'Pozsonyi',
+  //         num: 6,
+  //       },
+  //     ]
+
+  //     const get: (streets: Street[]) => Street = (streets: Street[]) => {
+  //       return streets[0]
+  //     }
+
+  //     const set: (street: Street) => (streets: Street[]) => Street[] =
+  //       (street: Street) => (streets: Street[]) => {
+  //         return [street, ...streets.slice(1)]
+  //       }
+
+  //     const lens = new Lens<Street[], Street>(get, set)
+
+  //     it('should work with find one in a list', async () => {
+  //       const { result } = renderHook(() => {
+  //         const strStreets = useStream({ defaultValue })
+
+  //         const strStreet = strStreets.map((streets: Street[]) => {
+  //           return streets[0]
+  //         })
+  //         return {
+  //           strStreets,
+  //           strStreet,
+  //         }
+  //       })
+
+  //       expect(result.current.strStreet.isLoading).toBe(false)
+  //       expect(result.current.strStreet.data).toStrictEqual({
+  //         name: 'Kassák Lajos',
+  //         num: 19,
+  //       })
+  //       expect(result.current.strStreet.failure).toBe(undefined)
+
+  //       act(() => {
+  //         result.current.strStreet.loading()
+  //       })
+
+  //       expect(result.current.strStreet.isLoading).toBe(true)
+  //       expect(result.current.strStreet.data).toBe(undefined)
+  //       expect(result.current.strStreet.failure).toBe(undefined)
+
+  //       act(() => {
+  //         result.current.strStreet.emit({
+  //           name: 'Kassai',
+  //           num: 13,
+  //         })
+  //       })
+
+  //       const expectedValue = lens.set({
+  //         name: 'Kassai',
+  //         num: 13,
+  //       })(defaultValue)
+
+  //       expect(result.current.strStreets.isLoading).toBe(false)
+  //       expect(result.current.strStreets.data).toStrictEqual(expectedValue)
+  //       expect(result.current.strStreets.failure).toBe(undefined)
+
+  //       expect(result.current.strStreet.isLoading).toBe(false)
+  //       expect(result.current.strStreet.data).toStrictEqual({
+  //         name: 'Kassai',
+  //         num: 13,
+  //       })
+  //       expect(result.current.strStreet.failure).toBe(undefined)
+  //     })
+  //   })
+  // })
 
   describe('.map', () => {
     it('should not update upstream on loading', async () => {
@@ -155,20 +260,19 @@ describe('Stream', () => {
         const strEmployee = useStream<Employee>({ defaultValue })
 
         const strName = strEmployee.map((employee: Employee) => employee.name)
-        const strNameB = strEmployee.mapB(Lens.fromProp<Employee>()('name'))
-        return { strEmployee, strName, strNameB }
+        return { strEmployee, strName }
       })
 
       act(() => {
-        result.current.strName.loading()
+        result.current.strName.setLoading()
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+      expect(result.current.strEmployee.value).toStrictEqual(defaultValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strName.isLoading).toBe(true)
-      expect(result.current.strName.data).toBe(undefined)
+      expect(result.current.strName.value).toBe(undefined)
       expect(result.current.strName.failure).toBe(undefined)
     })
 
@@ -177,20 +281,19 @@ describe('Stream', () => {
         const strEmployee = useStream<Employee>({ defaultValue })
 
         const strName = strEmployee.map((employee: Employee) => employee.name)
-        const strNameB = strEmployee.mapB(Lens.fromProp<Employee>()('name'))
-        return { strEmployee, strName, strNameB }
+        return { strEmployee, strName }
       })
 
       act(() => {
-        result.current.strName.emit('Gabor Chromy')
+        result.current.strName.setValue('Gabor Chromy')
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+      expect(result.current.strEmployee.value).toStrictEqual(defaultValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe('Gabor Chromy')
+      expect(result.current.strName.value).toBe('Gabor Chromy')
       expect(result.current.strName.failure).toBe(undefined)
     })
 
@@ -199,20 +302,19 @@ describe('Stream', () => {
         const strEmployee = useStream<Employee>({ defaultValue })
 
         const strName = strEmployee.map((employee: Employee) => employee.name)
-        const strNameB = strEmployee.mapB(Lens.fromProp<Employee>()('name'))
-        return { strEmployee, strName, strNameB }
+        return { strEmployee, strName }
       })
 
       act(() => {
-        result.current.strName.emit(new Error('Failure test'))
+        result.current.strName.setValue(new Error('Failure test'))
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+      expect(result.current.strEmployee.value).toStrictEqual(defaultValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe(undefined)
+      expect(result.current.strName.value).toBe(undefined)
       expect(result.current.strName.failure).toBeInstanceOf(Error)
       expect(result.current.strName.failure.message).toBe('Failure test')
     })
@@ -227,29 +329,29 @@ describe('Stream', () => {
       })
 
       act(() => {
-        result.current.strEmployee.loading()
+        result.current.strEmployee.setLoading()
       })
 
       expect(result.current.strName.isLoading).toBe(true)
-      expect(result.current.strName.data).toBe(undefined)
+      expect(result.current.strName.value).toBe(undefined)
       expect(result.current.strName.failure).toBe(undefined)
 
       const expectedValue = lens.set('Gabor Chromy')(defaultValue)
 
       act(() => {
-        result.current.strEmployee.emit(expectedValue)
+        result.current.strEmployee.setValue(expectedValue)
       })
 
       expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe('Gabor Chromy')
+      expect(result.current.strName.value).toBe('Gabor Chromy')
       expect(result.current.strName.failure).toBe(undefined)
 
       act(() => {
-        result.current.strName.emit(new Error('Failure test'))
+        result.current.strName.setValue(new Error('Failure test'))
       })
 
       expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe(undefined)
+      expect(result.current.strName.value).toBe(undefined)
       expect(result.current.strName.failure).toBeInstanceOf(Error)
       expect(result.current.strName.failure.message).toBe('Failure test')
     })
@@ -264,106 +366,29 @@ describe('Stream', () => {
       })
 
       act(() => {
-        result.current.strName.loading()
+        result.current.strName.setLoading()
       })
 
       expect(result.current.strName.isLoading).toBe(true)
-      expect(result.current.strName.data).toBe(undefined)
+      expect(result.current.strName.value).toBe(undefined)
       expect(result.current.strName.failure).toBe(undefined)
 
       const expectedValue = lens.set('Gabor Chromy')(defaultValue)
 
       act(() => {
-        result.current.strEmployee.emit(expectedValue)
+        result.current.strEmployee.setValue(expectedValue)
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(expectedValue)
+      expect(result.current.strEmployee.value).toStrictEqual(expectedValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strName.isLoading).toBe(false)
-      expect(result.current.strName.data).toBe('Gabor Chromy')
+      expect(result.current.strName.value).toBe('Gabor Chromy')
       expect(result.current.strName.failure).toBe(undefined)
     })
   })
 
-  describe('work with more complex cases', () => {
-    const defaultValue: Street[] = [
-      {
-        name: 'Kassák Lajos',
-        num: 19,
-      },
-      {
-        name: 'Szíjgyártó',
-        num: 10,
-      },
-      {
-        name: 'Pozsonyi',
-        num: 6,
-      },
-    ]
-
-    const get: (streets: Street[]) => Street = (streets: Street[]) => {
-      return streets[0]
-    }
-
-    const set: (street: Street) => (streets: Street[]) => Street[] =
-      (street: Street) => (streets: Street[]) => {
-        return [street, ...streets.slice(1)]
-      }
-
-    const lens = new Lens<Street[], Street>(get, set)
-
-    it('should work with find one in a list', async () => {
-      const { result } = renderHook(() => {
-        const strStreets = useStream({ defaultValue })
-
-        const strStreet = strStreets.mapB(lens)
-        return {
-          strStreets,
-          strStreet,
-        }
-      })
-
-      expect(result.current.strStreet.isLoading).toBe(false)
-      expect(result.current.strStreet.data).toStrictEqual({
-        name: 'Kassák Lajos',
-        num: 19,
-      })
-      expect(result.current.strStreet.failure).toBe(undefined)
-
-      act(() => {
-        result.current.strStreet.loading()
-      })
-
-      expect(result.current.strStreet.isLoading).toBe(true)
-      expect(result.current.strStreet.data).toBe(undefined)
-      expect(result.current.strStreet.failure).toBe(undefined)
-
-      act(() => {
-        result.current.strStreet.emit({
-          name: 'Kassai',
-          num: 13,
-        })
-      })
-
-      const expectedValue = lens.set({
-        name: 'Kassai',
-        num: 13,
-      })(defaultValue)
-
-      expect(result.current.strStreets.isLoading).toBe(false)
-      expect(result.current.strStreets.data).toStrictEqual(expectedValue)
-      expect(result.current.strStreets.failure).toBe(undefined)
-
-      expect(result.current.strStreet.isLoading).toBe(false)
-      expect(result.current.strStreet.data).toStrictEqual({
-        name: 'Kassai',
-        num: 13,
-      })
-      expect(result.current.strStreet.failure).toBe(undefined)
-    })
-  })
   describe('.and should combine two streams into one and', () => {
     it('should be isLoading if any of the stream is loading', () => {
       const lens = Lens.fromProp<Employee>()('name')
@@ -382,75 +407,75 @@ describe('Stream', () => {
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+      expect(result.current.strEmployee.value).toStrictEqual(defaultValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strEmployee2.isLoading).toBe(false)
-      expect(result.current.strEmployee2.data).toStrictEqual(
+      expect(result.current.strEmployee2.value).toStrictEqual(
         modifiedDefaultValue
       )
       expect(result.current.strEmployee2.failure).toBe(undefined)
 
       expect(result.current.andStream.isLoading).toBe(false)
-      expect(result.current.andStream.data).toStrictEqual([
+      expect(result.current.andStream.value).toStrictEqual([
         defaultValue,
         modifiedDefaultValue,
       ])
       expect(result.current.andStream.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee.loading()
+        result.current.strEmployee.setLoading()
       })
 
       expect(result.current.strEmployee.isLoading).toBe(true)
-      expect(result.current.strEmployee.data).toBe(undefined)
+      expect(result.current.strEmployee.value).toBe(undefined)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strEmployee2.isLoading).toBe(false)
-      expect(result.current.strEmployee2.data).toStrictEqual(
+      expect(result.current.strEmployee2.value).toStrictEqual(
         modifiedDefaultValue
       )
       expect(result.current.strEmployee2.failure).toBe(undefined)
 
       expect(result.current.andStream.isLoading).toBe(true)
-      expect(result.current.andStream.data).toBe(undefined)
+      expect(result.current.andStream.value).toBe(undefined)
       expect(result.current.andStream.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee.emit(defaultValue)
+        result.current.strEmployee.setValue(defaultValue)
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+      expect(result.current.strEmployee.value).toStrictEqual(defaultValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strEmployee2.isLoading).toBe(false)
-      expect(result.current.strEmployee2.data).toStrictEqual(
+      expect(result.current.strEmployee2.value).toStrictEqual(
         modifiedDefaultValue
       )
       expect(result.current.strEmployee2.failure).toBe(undefined)
 
       expect(result.current.andStream.isLoading).toBe(false)
-      expect(result.current.andStream.data).toStrictEqual([
+      expect(result.current.andStream.value).toStrictEqual([
         defaultValue,
         modifiedDefaultValue,
       ])
       expect(result.current.andStream.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee2.loading()
+        result.current.strEmployee2.setLoading()
       })
 
       expect(result.current.strEmployee.isLoading).toBe(false)
-      expect(result.current.strEmployee.data).toStrictEqual(defaultValue)
+      expect(result.current.strEmployee.value).toStrictEqual(defaultValue)
       expect(result.current.strEmployee.failure).toBe(undefined)
 
       expect(result.current.strEmployee2.isLoading).toBe(true)
-      expect(result.current.strEmployee2.data).toBe(undefined)
+      expect(result.current.strEmployee2.value).toBe(undefined)
       expect(result.current.strEmployee2.failure).toBe(undefined)
 
       expect(result.current.andStream.isLoading).toBe(true)
-      expect(result.current.andStream.data).toBe(undefined)
+      expect(result.current.andStream.value).toBe(undefined)
       expect(result.current.andStream.failure).toBe(undefined)
     })
 
@@ -469,23 +494,23 @@ describe('Stream', () => {
       })
 
       expect(result.current.andStream.isLoading).toBe(true)
-      expect(result.current.andStream.data).toBe(undefined)
+      expect(result.current.andStream.value).toBe(undefined)
       expect(result.current.andStream.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee.emit(defaultValue)
+        result.current.strEmployee.setValue(defaultValue)
       })
 
       expect(result.current.andStream.isLoading).toBe(true)
-      expect(result.current.andStream.data).toBe(undefined)
+      expect(result.current.andStream.value).toBe(undefined)
       expect(result.current.andStream.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee.emit(new Error('Test error'))
+        result.current.strEmployee.setValue(new Error('Test error'))
       })
 
       expect(result.current.andStream.isLoading).toBe(true)
-      expect(result.current.andStream.data).toBe(undefined)
+      expect(result.current.andStream.value).toBe(undefined)
       expect(result.current.andStream.failure).toBe(undefined)
     })
 
@@ -515,23 +540,23 @@ describe('Stream', () => {
       })
 
       expect(result.current.reduced.isLoading).toBe(false)
-      expect(result.current.reduced.data).toStrictEqual([defaultValue])
+      expect(result.current.reduced.value).toStrictEqual([defaultValue])
       expect(result.current.reduced.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee.loading()
+        result.current.strEmployee.setLoading()
       })
 
       expect(result.current.reduced.isLoading).toBe(true)
-      expect(result.current.reduced.data).toBe(undefined)
+      expect(result.current.reduced.value).toBe(undefined)
       expect(result.current.reduced.failure).toBe(undefined)
 
       act(() => {
-        result.current.strEmployee.emit(modifiedDefaultValue)
+        result.current.strEmployee.setValue(modifiedDefaultValue)
       })
 
       expect(result.current.reduced.isLoading).toBe(false)
-      expect(result.current.reduced.data).toStrictEqual([
+      expect(result.current.reduced.value).toStrictEqual([
         defaultValue,
         modifiedDefaultValue,
       ])

@@ -1700,6 +1700,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/kefir@^3.8.7":
+  version "3.8.7"
+  resolved "https://registry.yarnpkg.com/@types/kefir/-/kefir-3.8.7.tgz#2ab378e6b9c8a3f0e69fc7f5bc4be5cb2c845b03"
+  integrity sha512-2flvlUgAgLmMUje9dGmvQ2jNzNCc3aKm912z1qrjxrRWQT6iglAq28f7m9xcScHjV1QPH6LosRvR4bTUAgAO2w==
+  dependencies:
+    "@types/node" "*"
+
 "@types/lodash@latest":
   version "4.14.170"
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.14.170.tgz#0d67711d4bf7f4ca5147e9091b847479b87925d6"
@@ -5242,6 +5249,11 @@ jws@^3.2.2:
   dependencies:
     jwa "^1.4.1"
     safe-buffer "^5.0.1"
+
+kefir@^3.8.8:
+  version "3.8.8"
+  resolved "https://registry.yarnpkg.com/kefir/-/kefir-3.8.8.tgz#235932ddfbed422acebf5d7cba503035e9ea05c5"
+  integrity sha512-xWga7QCZsR2Wjy2vNL3Kq/irT+IwxwItEWycRRlT5yhqHZK2fmEhziP+LzcJBWSTAMranGKtGTQ6lFpyJS3+jA==
 
 keyv@^3.0.0:
   version "3.1.0"

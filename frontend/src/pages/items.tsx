@@ -17,6 +17,7 @@ import AddIcon from '@material-ui/icons/Add'
 import ListIcon from '@material-ui/icons/List'
 import { Alert, AlertTitle } from '@material-ui/lab'
 import LensStream from 'common/LensStream'
+import { Property, useProperty, usePropertyMap } from 'common/Property'
 import { InventoryItem, Uom } from 'generated/graphql'
 import { GetServerSideProps } from 'next'
 import useTranslation from 'next-translate/useTranslation'
@@ -110,62 +111,51 @@ type UIInventoryItem = InventoryItemApi & {
 }
 
 export interface IItemProps {
-  item: InventoryItem
-  strItems: LensStream<InventoryItemApi[]>
-  strUnits: LensStream<Uom[]>
+  item: InventoryItemApi
+  units: Uom[]
 }
 
-const Item: React.FC<IItemProps> = ({
-  item,
-  strUnits,
-  strItems,
-}: IItemProps) => {
+const Item: React.FC<IItemProps> = ({ item, units }: IItemProps) => {
   const classes = useStyles()
 
-  const strItem = strItems
-    .map((items) => items.find((_item) => item.id === _item.id))
-    .fold<UIInventoryItem>((prev, item) => {
-      const uiInventoryItem: UIInventoryItem = {
-        editing: false,
-        ...(prev ? prev : item),
-      }
+  // const mapFn = (item: InventoryItemApi) => {
+  //   return {
+  //     ...item,
+  //     editing: false,
+  //   }
+  // }
 
-      return uiInventoryItem
-    })
+  // const mapProperty = (property: Property<InventoryItemApi, Error>) =>
+  //   property.map(mapFn)
 
-  console.log('Item', item.id, JSON.parse(JSON.stringify(strItem.data)))
+  // const [uiItem, setUiItem] = usePropertyMap('items_map', item, mapProperty)
 
-  const handleEdit = (editing: boolean) => {
-    strItem.emit({
-      ...strItem.data,
-      editing,
-    })
-  }
+  // console.log('Item', item.id, JSON.parse(JSON.stringify(uiItem)))
 
-  //api-ban nincs benne az editing mert az az UIInventoryItemben van
-  const api = strItem.data?.useApi()
+  // const handleEdit = (editing: boolean) => {
+  //   console.log('Editing', editing)
+  //   setUiItem.setValue({ ...uiItem.value, editing })
+  // }
 
   return (
     <Grid item xs={12} md={6}>
       <Paper elevation={3} className={classes.paper}>
-        {(strItem.isLoading || strUnits.isLoading) && <CircularProgress />}
-        {(strItem.failure || strUnits.failure) && (
+        {/* {uiItem.isLoading && <CircularProgress />}
+        {uiItem.failure && (
           <Alert severity="error">
             <AlertTitle>Error</AlertTitle>
-            {strItems.failure
-              ? strItems.failure.message
-              : strUnits.failure.message}
+            {uiItem.failure.message}
           </Alert>
         )}
-        {api && (
+        {uiItem.value && (
           <>
             <Avatar className={classes.avatar}>A</Avatar>
-            {api.editing ? (
+            {uiItem.value.editing ? (
               <Edit
                 item={item}
                 onSave={(record) => {}}
                 onCancel={() => handleEdit(false)}
-                units={strUnits.data}
+                units={units}
               />
             ) : (
               <Display
@@ -178,7 +168,7 @@ const Item: React.FC<IItemProps> = ({
               />
             )}
           </>
-        )}
+        )} */}
       </Paper>
     </Grid>
   )
@@ -189,18 +179,17 @@ export default function Index() {
 
   const { t } = useTranslation() // default namespace (optional)
 
-  const inventory = useInventory()
+  const { items, units } = useInventory()
 
-  const strItems = inventory.strItems
-  const strUnits = inventory.strUnits
+  const strItemsAndUnits = items.and(units, 'and')
+
+  const [ap, setAp] = useProperty('andProperty', strItemsAndUnits)
 
   console.log(
     'Index render',
-    JSON.parse(JSON.stringify(strItems)),
-    JSON.parse(JSON.stringify(strUnits))
+    JSON.parse(JSON.stringify(items)),
+    JSON.parse(JSON.stringify(units))
   )
-
-  const strItemsAndUnits = strItems.and(strUnits)
 
   return (
     <Layout
@@ -240,7 +229,7 @@ export default function Index() {
             {strItemsAndUnits.failure.message}
           </Alert>
         )}
-        {strItems.and(strUnits).data && (
+        {strItemsAndUnits.value && (
           <Grid container>
             {/* {edits.includes(emptyItem.id) && (
               <Grid item xs={12} md={6}>
@@ -255,14 +244,9 @@ export default function Index() {
                 </Paper>
               </Grid>
             )} */}
-            {strItems.data.map((item) => (
-              <Item
-                key={item.id}
-                item={item}
-                strUnits={strUnits}
-                strItems={strItems}
-              />
-            ))}
+            {/* {strItems.value.map((item) => (
+              <Item key={item.id} item={item} units={strUnits.value} />
+            ))} */}
             <p>Items</p>
           </Grid>
         )}
