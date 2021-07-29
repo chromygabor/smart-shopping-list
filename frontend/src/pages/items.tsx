@@ -16,9 +16,8 @@ import { makeStyles } from '@material-ui/core/styles'
 import AddIcon from '@material-ui/icons/Add'
 import ListIcon from '@material-ui/icons/List'
 import { Alert, AlertTitle } from '@material-ui/lab'
-import LensStream from 'common/LensStream'
-import { Property, useProperty, usePropertyMap } from 'common/Property'
-import { InventoryItem, Uom } from 'generated/graphql'
+import { useProperty } from 'common/Property'
+import { Uom } from 'generated/graphql'
 import { GetServerSideProps } from 'next'
 import useTranslation from 'next-translate/useTranslation'
 import React from 'react'
@@ -128,19 +127,25 @@ const Item: React.FC<IItemProps> = ({ item, units }: IItemProps) => {
   // const mapProperty = (property: Property<InventoryItemApi, Error>) =>
   //   property.map(mapFn)
 
-  // const [uiItem, setUiItem] = usePropertyMap('items_map', item, mapProperty)
+  const [i, iFn] = useProperty<InventoryItemApi, Error>(item)
+  const [uiItem, uiItemFn] = iFn.map((inventoryItemApi) => {
+    return {
+      ...inventoryItemApi,
+      editing: false,
+    }
+  })
 
-  // console.log('Item', item.id, JSON.parse(JSON.stringify(uiItem)))
+  console.log('Item', item.id, uiItem)
 
-  // const handleEdit = (editing: boolean) => {
-  //   console.log('Editing', editing)
-  //   setUiItem.setValue({ ...uiItem.value, editing })
-  // }
+  const handleEdit = (editing: boolean) => {
+    console.log('Editing', editing)
+    uiItemFn.setValue({ ...uiItem.value, editing })
+  }
 
   return (
     <Grid item xs={12} md={6}>
       <Paper elevation={3} className={classes.paper}>
-        {/* {uiItem.isLoading && <CircularProgress />}
+        {uiItem.isLoading && <CircularProgress />}
         {uiItem.failure && (
           <Alert severity="error">
             <AlertTitle>Error</AlertTitle>
@@ -162,13 +167,15 @@ const Item: React.FC<IItemProps> = ({ item, units }: IItemProps) => {
                 item={item}
                 onEditClicked={() => handleEdit(true)}
                 onRemoveClicked={() => {}}
-                onDoneClicked={() => {}}
+                onDoneClicked={() => {
+                  uiItem.value.done()
+                }}
                 onDoneAllClicked={() => {}}
                 onAddClicked={() => {}}
               />
             )}
           </>
-        )} */}
+        )}
       </Paper>
     </Grid>
   )
@@ -179,16 +186,15 @@ export default function Index() {
 
   const { t } = useTranslation() // default namespace (optional)
 
-  const { items, units } = useInventory()
+  const { items, itemsFn, units, unitsFn } = useInventory()
 
-  const strItemsAndUnits = items.and(units, 'and')
-
-  const [ap, setAp] = useProperty('andProperty', strItemsAndUnits)
+  const [itemsAndUnits, setAp] = itemsFn.and(units, 'and')
 
   console.log(
     'Index render',
     JSON.parse(JSON.stringify(items)),
-    JSON.parse(JSON.stringify(units))
+    JSON.parse(JSON.stringify(units)),
+    JSON.parse(JSON.stringify(itemsAndUnits))
   )
 
   return (
@@ -222,14 +228,14 @@ export default function Index() {
       </Box>
 
       <Box className={classes.futureContainer}>
-        {strItemsAndUnits.isLoading && <CircularProgress />}
-        {strItemsAndUnits.failure && (
+        {itemsAndUnits.isLoading && <CircularProgress />}
+        {itemsAndUnits.failure && (
           <Alert severity="error">
             <AlertTitle>Error</AlertTitle>
-            {strItemsAndUnits.failure.message}
+            {itemsAndUnits.failure.message}
           </Alert>
         )}
-        {strItemsAndUnits.value && (
+        {itemsAndUnits.value && (
           <Grid container>
             {/* {edits.includes(emptyItem.id) && (
               <Grid item xs={12} md={6}>
@@ -244,9 +250,9 @@ export default function Index() {
                 </Paper>
               </Grid>
             )} */}
-            {/* {strItems.value.map((item) => (
-              <Item key={item.id} item={item} units={strUnits.value} />
-            ))} */}
+            {items.value.map((item) => (
+              <Item key={item.id} item={item} units={units.value} />
+            ))}
             <p>Items</p>
           </Grid>
         )}

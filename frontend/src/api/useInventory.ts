@@ -67,44 +67,37 @@ const emptyItem = {
 }
 
 export function useInventory() {
-  const [
-    items,
-    {
-      setFailure: setItemsFailure,
-      setValue: setItemsValue,
-      setLoading: setItemsLoading,
-    },
-  ] = useProperty<InventoryItem[], Error>('inventory')
+  const [items, itemsFn] = useProperty<InventoryItem[], Error>(
+    undefined,
+    'inventory'
+  )
 
-  const [units, { setFailure, setValue, setLoading }] = useProperty<
-    Uom[],
-    Error
-  >('uoms')
+  const [units, unitsFn] = useProperty<Uom[], Error>(undefined, 'uoms')
 
   useEffect(() => {
     chaosMonkey({
       onError: () => {
         console.log('Error in items')
-        setItemsFailure(new Error('Error from items'))
+        itemsFn.setFailure(new Error('Error from items'))
       },
       onSuccess: () => {
         console.log('Success in items')
-        setItemsValue(mockItems)
+        itemsFn.setValue(mockItems)
       },
     })
     chaosMonkey({
       onError: () => {
         console.log('Error in uoms')
-        setFailure(new Error('Error from uoms'))
+        unitsFn.setFailure(new Error('Error from uoms'))
       },
       onSuccess: () => {
         console.log('Success in uoms')
-        setValue(mockUnits)
+        unitsFn.setValue(mockUnits)
       },
     })
   }, [])
 
-  const inventoryItems = items.map((items) => {
+  const [inventoryItems, inventoryItemsFn] = itemsFn.map((items) => {
     console.log('----Mapping is running')
     return items.map<InventoryItemApi>((item) => ({
       ...item,
@@ -116,7 +109,7 @@ export function useInventory() {
           ...item,
           qty: item.qty - 1,
         }
-        setItemsValue(
+        itemsFn.setValue(
           items.map((inventoryItem) =>
             inventoryItem.id === item.id ? newItem : inventoryItem
           )
@@ -125,5 +118,5 @@ export function useInventory() {
     }))
   })
 
-  return { items: inventoryItems, units }
+  return { items: inventoryItems, itemsFn: inventoryItemsFn, units, unitsFn }
 }

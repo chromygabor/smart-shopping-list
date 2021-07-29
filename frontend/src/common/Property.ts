@@ -1,12 +1,14 @@
-import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react'
-import { identity, isEqual } from 'underscore'
+import { Setter } from 'monocle-ts'
+import { useEffect, useRef, useState } from 'react'
+import { isEqual } from 'underscore'
 import niy from './niy'
 
-class PropertyState<V, F> {
+class Property<V, F> {
   constructor(
     public isLoading: boolean,
     public value?: V,
-    public failure?: F
+    public failure?: F,
+    public name?: string
   ) {}
 }
 
@@ -17,35 +19,22 @@ type PropertyFN<V, F> = {
 
   setFailure: <F2 extends F>(failure: F2) => void
 
-  map<V2>(fn: (input: V) => V2): PropertyReturn<V2, F>
+  map<V2>(fn: (input: V) => V2, name?: string): PropertyReturn<V2, F>
+
+  and<V2, F2 extends F>(
+    property2: Property<V2, F2>,
+    name?: string
+  ): PropertyReturn<[V, V2], F>
 }
 
-type PropertyReturn<V, F> = [
-  property: PropertyState<V, F>,
-  fn: PropertyFN<V, F>
-]
+type PropertyReturn<V, F> = [property: Property<V, F>, fn: PropertyFN<V, F>]
 
 export class PropertyUtils {
   map<V, F, V2>(
     property: Property<V, F>,
     fn: (value: V) => V2,
     name: string = ''
-  ) {
-    switch (property.type) {
-      case 'ISLOADING':
-        return this.loading<V2, F>(name)
-      case 'FAILURE':
-        return this.failure<V2, F>(property.state as F, name)
-      case 'VALUE':
-        return this.value<V2, F>(fn(property.state as V), name)
-    }
-  }
-
-  mapState<V, F, V2>(
-    property: PropertyState<V, F>,
-    fn: (value: V) => V2,
-    name: string = ''
-  ): PropertyState<V2, F> {
+  ): Property<V2, F> {
     if (property.isLoading) {
       return this.loading<V2, F>(name)
     } else if (property.failure) {
@@ -61,7 +50,7 @@ export class PropertyUtils {
     name: string = ''
   ): Property<[V, V2], F> {
     if (property.isLoading || property2.isLoading)
-      return this.loading<[V, V2], F>()
+      return this.loading<[V, V2], F>(name)
     else if (property.failure)
       return this.failure<[V, V2], F>(property.failure, name)
     else if (property2.failure)
@@ -70,143 +59,110 @@ export class PropertyUtils {
   }
 
   loading<V, F>(name: string = '') {
-    return new Property<V, F>(name, this, 'ISLOADING')
+    return new Property<V, F>(true, undefined, undefined, name)
   }
 
   failure<V, F>(failure: F, name: string = '') {
-    return new Property<V, F>(name, this, 'FAILURE', failure)
+    return new Property<V, F>(false, undefined, failure, name)
   }
 
   value<V, F>(value: V, name: string = '') {
-    return new Property<V, F>(name, this, 'VALUE', value)
-  }
-
-  toState<V, F>(property: Property<V, F>) {
-    return {
-      isLoading: property.type === 'ISLOADING',
-      failure: property.type === 'FAILURE' ? (property.state as F) : undefined,
-      value: property.type === 'VALUE' ? (property.state as V) : undefined,
-    }
+    return new Property<V, F>(false, value, undefined, name)
   }
 }
 
-export class Property<V, F> {
-  constructor(
-    public name: string,
-    public propertyUtils: PropertyUtils,
-    public type: 'ISLOADING' | 'FAILURE' | 'VALUE',
-    public state?: V | F
-  ) {}
-
-  toState() {
-    return this.propertyUtils.toState(this)
-  }
-
-  map<V2>(fn: (value: V) => V2, name: string = '') {
-    return this.propertyUtils.map(this, fn, name)
-  }
-
-  and<V2, F2 extends F>(
-    property2: Property<V2, F2>,
-    name: string = ''
-  ): Property<[V, V2], F> {
-    return this.propertyUtils.and(this, property2, name)
-  }
-
-  value: V | undefined = this.type === 'VALUE' ? (this.state as V) : undefined
-  failure: F | undefined =
-    this.type === 'FAILURE' ? (this.state as F) : undefined
-  isLoading: boolean = this.type === 'ISLOADING'
-
-  setValue<V2 extends V>(value: V2) {
-    return this.propertyUtils.value<V, F>(value, this.name)
-  }
-
-  setLoading() {
-    return this.propertyUtils.loading<V, F>(this.name)
-  }
-
-  setFailure<F2 extends F>(failure: F2) {
-    return this.propertyUtils.failure<V, F>(failure, this.name)
-  }
+type VersionData<V, F> = {
+  data: Property<V, F>
+  version: number
 }
 
-// export function usePropertyMap<V, F, V2>(
-//   name: string = 'noname',
-//   _property: V | Property<V, F>,
-//   initFn: (prop: Property<V, F>) => Property<V2, F>
-// ): [Property<V2, F>, PropertyMutator<V2, F>] {
-//   const [property] = useProperty(name, _property)
+type DependencyData<V, F> = VersionData<V, F> & {
+  dependencies: Property<any, any>[]
+}
 
-//   return useProperty(name, initFn(property))
-// }
-
-function makeFn<V, F>() {}
-
-export function useProperty<V, F>(
+function makeFn<V, F>(
   name: string = 'noname',
-  _property?: V | PropertyState<V, F>
+  _property: () => Property<V, F>,
+  propertyUtils: PropertyUtils,
+  dependencies: Property<any, any>[]
 ): PropertyReturn<V, F> {
-  const propertyUtils =
-    _property && _property instanceof Property
-      ? _property.propertyUtils
-      : new PropertyUtils()
+  const [state, setState] = useState<VersionData<V, F>>(() => ({
+    data: _property(),
+    version: 0,
+  }))
 
-  const state = _property
-    ? _property instanceof PropertyState
-      ? _property
-      : propertyUtils.value<V, F>(_property, name)
-    : propertyUtils.loading<V, F>(name)
+  const dependencyRef = useRef<DependencyData<V, F>>({
+    dependencies,
+    version: 0,
+    data: state.data,
+  })
 
-  const ref = useRef(state)
-
-  const equal = isEqual(ref.current, state)
-
+  const equal = isEqual(dependencyRef.current.dependencies, dependencies)
   if (!equal) {
-    ref.current = state
+    const version = Math.max(state.version, dependencyRef.current.version) + 1
+    dependencyRef.current = { dependencies, version, data: _property() }
   }
 
-  const [property, setProperty] = useState<PropertyState<V, F>>(state)
+  const property =
+    dependencyRef.current.version > state.version
+      ? dependencyRef.current.data
+      : state.data
 
-  useEffect(() => {
-    if (!isEqual(state, property)) {
-      console.log(`[${name}] Setting property because `, property, state)
-      setProperty(state)
-    }
-  }, [ref.current])
+  const setProperty = (property: Property<V, F>) => {
+    const version = Math.max(state.version, dependencyRef.current.version) + 1
+    setState({ data: property, version })
+  }
 
   const fn: PropertyFN<V, F> = {
     setValue: <V2 extends V>(value: V2) => {
-      setProperty(propertyUtils.value<V2, F>(value))
+      setProperty(propertyUtils.value<V2, F>(value, name))
     },
 
     setLoading: () => {
-      setProperty(propertyUtils.loading<V, F>())
+      setProperty(propertyUtils.loading<V, F>(name))
     },
 
     setFailure: <F2 extends F>(failure: F2) => {
-      setProperty(propertyUtils.failure<V, F2>(failure))
+      setProperty(propertyUtils.failure<V, F2>(failure, name))
     },
 
     map: <V2>(
       fn: (input: V) => V2,
       name: string = ''
     ): PropertyReturn<V2, F> => {
-      const [mappedProperty, setMappedProperty] =
-        useState<PropertyState<V2, F>>(state)
-
-      useEffect(() => {
-        console.log(
-          `[${name}] Setting mapped property because upstream changed`,
-          mappedProperty,
-          state
-        )
-        setMappedProperty(propertyUtils.mapState(property, fn))
-      }, [ref.current])
-
-      throw niy()
+      // throw niy()
+      return makeFn(
+        name,
+        () => propertyUtils.map(property, fn, name),
+        propertyUtils,
+        [property]
+      )
+    },
+    and: <V2, F2 extends F>(property2: Property<V2, F2>, name?: string) => {
+      // throw niy()
+      return makeFn(
+        name,
+        () => propertyUtils.and(property, property2, name),
+        propertyUtils,
+        [property, property2]
+      )
     },
   }
-
   return [property, fn]
+}
+
+export function useProperty<V, F>(
+  _property?: V | Property<V, F>,
+  name: string = 'noname'
+): PropertyReturn<V, F> {
+  const propertyUtils = new PropertyUtils()
+
+  const state =
+    _property !== undefined
+      ? _property instanceof Property
+        ? _property
+        : propertyUtils.value<V, F>(_property, name)
+      : propertyUtils.loading<V, F>(name)
+
+  return makeFn(name, () => state, propertyUtils, [state])
 }
