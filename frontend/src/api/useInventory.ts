@@ -97,7 +97,7 @@ export function useInventory() {
     })
   }, [])
 
-  const [inventoryItems, inventoryItemsFn] = itemsFn.map((items) => {
+  const [inventoryItems, inventoryItemsFn] = items.map((items) => {
     console.log('----Mapping is running')
     return items.map<InventoryItemApi>((item) => ({
       ...item,
@@ -118,5 +118,5 @@ export function useInventory() {
     }))
   })
 
-  return { items: inventoryItems, itemsFn: inventoryItemsFn, units, unitsFn }
+  return { items: inventoryItems, units }
 }

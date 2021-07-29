@@ -117,18 +117,11 @@ export interface IItemProps {
 const Item: React.FC<IItemProps> = ({ item, units }: IItemProps) => {
   const classes = useStyles()
 
-  // const mapFn = (item: InventoryItemApi) => {
-  //   return {
-  //     ...item,
-  //     editing: false,
-  //   }
-  // }
-
-  // const mapProperty = (property: Property<InventoryItemApi, Error>) =>
-  //   property.map(mapFn)
-
-  const [i, iFn] = useProperty<InventoryItemApi, Error>(item)
-  const [uiItem, uiItemFn] = iFn.map((inventoryItemApi) => {
+  const [uiItem, uiItemFn] = useProperty.map<
+    InventoryItemApi,
+    UIInventoryItem,
+    Error
+  >(item, (inventoryItemApi) => {
     return {
       ...inventoryItemApi,
       editing: false,
@@ -186,9 +179,9 @@ export default function Index() {
 
   const { t } = useTranslation() // default namespace (optional)
 
-  const { items, itemsFn, units, unitsFn } = useInventory()
+  const { items, units } = useInventory()
 
-  const [itemsAndUnits, setAp] = itemsFn.and(units, 'and')
+  const [itemsAndUnits] = items.and(units, 'and')
 
   console.log(
     'Index render',
