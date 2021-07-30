@@ -118,5 +118,12 @@ export function useInventory() {
     }))
   })
 
-  return { items: inventoryItems, units }
+  const emptyApi: InventoryItemApi = {
+    ...emptyItem,
+    done: () => {
+      throw new Error('Item is not saved yet')
+    },
+  }
+
+  return { items: inventoryItems, units, emptyItem: emptyApi }
 }

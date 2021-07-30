@@ -20,7 +20,7 @@ import { useProperty } from 'common/Property'
 import { Uom } from 'generated/graphql'
 import { GetServerSideProps } from 'next'
 import useTranslation from 'next-translate/useTranslation'
-import React from 'react'
+import React, { useState } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   list: {},
@@ -117,14 +117,10 @@ export interface IItemProps {
 const Item: React.FC<IItemProps> = ({ item, units }: IItemProps) => {
   const classes = useStyles()
 
-  const [uiItem, uiItemFn] = useProperty.map<
-    InventoryItemApi,
-    UIInventoryItem,
-    Error
-  >(item, (inventoryItemApi) => {
+  const [uiItem, uiItemFn] = useProperty.map(item, (inventoryItemApi) => {
     return {
       ...inventoryItemApi,
-      editing: false,
+      editing: inventoryItemApi.id === '',
     }
   })
 
@@ -179,13 +175,23 @@ export default function Index() {
 
   const { t } = useTranslation() // default namespace (optional)
 
-  const { items, units } = useInventory()
+  const { items, units, emptyItem } = useInventory()
+
+  const [isAddingNew, addingNewFn] = useProperty(true)
+
+  // const [uiItems] = items.and(isAddingNew).map((params) => {
+
+  // })
+
+  // ((([params, ]) => {
+  //   return isAddingNew ? [emptyItem, ...params] : params
+  // }))
 
   const [itemsAndUnits] = items.and(units, 'and')
 
   console.log(
     'Index render',
-    JSON.parse(JSON.stringify(items)),
+    JSON.parse(JSON.stringify(uiItems)),
     JSON.parse(JSON.stringify(units)),
     JSON.parse(JSON.stringify(itemsAndUnits))
   )
@@ -214,7 +220,7 @@ export default function Index() {
           color="secondary"
           aria-label="add"
           className={classes.fab}
-          onClick={() => {}}
+          onClick={() => addingNewFn.setValue(true)}
         >
           <AddIcon />
         </Fab>
@@ -243,7 +249,7 @@ export default function Index() {
                 </Paper>
               </Grid>
             )} */}
-            {items.value.map((item) => (
+            {uiItems.value.map((item) => (
               <Item key={item.id} item={item} units={units.value} />
             ))}
             <p>Items</p>
