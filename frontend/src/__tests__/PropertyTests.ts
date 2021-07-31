@@ -38,13 +38,13 @@ import { useProperty } from '../common/Property'
 //   })
 
 //   it('and should return appropiate value', () => {
-//     const pv_1_l = Property.loading<number, Error>()
-//     const pv_1_v = Property.value<number, Error>(10)
-//     const pv_1_f = Property.failure<number, Error>(new Error('Test 1'))
+//     const pv_1_l = Property.loading<number>()
+//     const pv_1_v = Property.value<number>(10)
+//     const pv_1_f = Property.failure<number>(new Error('Test 1'))
 
-//     const pv_2_l = Property.loading<number, Error>()
-//     const pv_2_v = Property.value<number, Error>(20)
-//     const pv_2_f = Property.failure<number, Error>(new Error('Test 2'))
+//     const pv_2_l = Property.loading<number>()
+//     const pv_2_v = Property.value<number>(20)
+//     const pv_2_f = Property.failure<number>(new Error('Test 2'))
 
 //     expect(pv_1_l.and(pv_2_l)[0].isLoading).toBe(true)
 //     expect(pv_1_l.and(pv_2_v)[0].isLoading).toBe(true)
@@ -81,7 +81,7 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number, Error>(5, 'test')
+        const [state1, state1Fn] = useProperty<number>(5, 'test').asState
 
         const [state2, state2Fn] = state1.map(
           (item) => 'kukucs: ' + item * 2,
@@ -135,7 +135,7 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number, Error>(5, 'test')
+        const [state1, state1Fn] = useProperty<number>(5, 'test').asState
 
         const [state2, state2Fn] = state1.map(
           (item) => 'kukucs: ' + item * 2,
@@ -186,7 +186,7 @@ describe('useProperty', () => {
       const { result } = renderHook(() => {
         const counter = useRef(0)
         counter.current = counter.current + 1
-        const [state1, state1Fn] = useProperty<number, Error>(5, 'test')
+        const [state1, state1Fn] = useProperty<number>(5, 'test').asState
 
         const [state2, state2Fn] = state1.map(
           (item) => 'kukucs: ' + item * 2,
@@ -240,8 +240,8 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number, Error>(5, 'l-l')
-        const [state2, state2Fn] = useProperty<number, Error>(10, 'l-r')
+        const [state1, state1Fn] = useProperty<number>(5, 'l-l').asState
+        const [state2, state2Fn] = useProperty<number>(10, 'l-r').asState
 
         const [state3, state3Fn] = state1.and(state2, 'l-and')
 
@@ -290,8 +290,8 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number, Error>(5, 'rl')
-        const [state2, state2Fn] = useProperty<number, Error>(10, 'rr')
+        const [state1, state1Fn] = useProperty<number>(5, 'rl').asState
+        const [state2, state2Fn] = useProperty<number>(10, 'rr').asState
 
         const [state3, state3Fn] = state1.and(state2, 'r-and')
 
