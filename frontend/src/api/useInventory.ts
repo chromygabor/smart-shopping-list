@@ -1,6 +1,6 @@
 import chaosMonkey from 'common/chaosMonkey'
 import niy from 'common/niy'
-import { useProperty } from 'common/Property'
+import { Property } from 'common/Property'
 import { InventoryItem, Uom } from 'generated/graphql'
 import { useEffect } from 'react'
 
@@ -67,12 +67,9 @@ const emptyItem = {
 }
 
 export function useInventory() {
-  const [items, itemsFn] = useProperty<InventoryItem[], Error>(
-    undefined,
-    'inventory'
-  )
+  const [items, itemsFn] = Property.of<InventoryItem[]>().useProperty()
 
-  const [units, unitsFn] = useProperty<Uom[], Error>(undefined, 'uoms')
+  const [units, unitsFn] = Property.of<Uom[]>().useProperty()
 
   useEffect(() => {
     chaosMonkey({
@@ -97,7 +94,7 @@ export function useInventory() {
     })
   }, [])
 
-  const [inventoryItems, inventoryItemsFn] = items.map((items) => {
+  const inventoryItems = items.map((items) => {
     console.log('----Mapping is running')
     return items.map<InventoryItemApi>((item) => ({
       ...item,

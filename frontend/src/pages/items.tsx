@@ -16,11 +16,11 @@ import { makeStyles } from '@material-ui/core/styles'
 import AddIcon from '@material-ui/icons/Add'
 import ListIcon from '@material-ui/icons/List'
 import { Alert, AlertTitle } from '@material-ui/lab'
-import { useProperty } from 'common/Property'
+import { Property } from 'common/Property'
 import { Uom } from 'generated/graphql'
 import { GetServerSideProps } from 'next'
 import useTranslation from 'next-translate/useTranslation'
-import React, { useState } from 'react'
+import React from 'react'
 
 const useStyles = makeStyles((theme) => ({
   list: {},
@@ -117,12 +117,14 @@ export interface IItemProps {
 const Item: React.FC<IItemProps> = ({ item, units }: IItemProps) => {
   const classes = useStyles()
 
-  const [uiItem, uiItemFn] = useProperty.map(item, (inventoryItemApi) => {
-    return {
-      ...inventoryItemApi,
-      editing: inventoryItemApi.id === '',
-    }
-  })
+  const [uiItem, uiItemFn] = Property.of(item)
+    .map((inventoryItemApi) => {
+      return {
+        ...inventoryItemApi,
+        editing: inventoryItemApi.id === '',
+      }
+    })
+    .useProperty()
 
   console.log('Item', item.id, uiItem)
 
@@ -177,17 +179,22 @@ export default function Index() {
 
   const { items, units, emptyItem } = useInventory()
 
-  const [isAddingNew, addingNewFn] = useProperty(true)
+  const [isAddingNew, addingNewFn] = Property.of(false).useProperty()
 
-  // const [uiItems] = items.and(isAddingNew).map((params) => {
-
-  // })
+  const uiItems = items
+    .and(isAddingNew)
+    .and(units)
+    .map(([itemApis, addingNew, units]) => ({
+      itemApis,
+      addingNew,
+      units,
+    }))
 
   // ((([params, ]) => {
   //   return isAddingNew ? [emptyItem, ...params] : params
   // }))
 
-  const [itemsAndUnits] = items.and(units, 'and')
+  const itemsAndUnits = items.and(units)
 
   console.log(
     'Index render',
@@ -249,9 +256,9 @@ export default function Index() {
                 </Paper>
               </Grid>
             )} */}
-            {uiItems.value.map((item) => (
+            {/* {uiItems.value.map((item) => (
               <Item key={item.id} item={item} units={units.value} />
-            ))}
+            ))} */}
             <p>Items</p>
           </Grid>
         )}

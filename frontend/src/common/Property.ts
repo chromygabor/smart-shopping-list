@@ -1,25 +1,32 @@
 import { useRef, useState } from 'react'
 import { isEqual } from 'underscore'
 import niy from './niy'
+import { parse, StackFrame } from 'stacktrace-parser'
+import _ from 'underscore'
 
-export class PropertyValue<V> {
-  static loading<V>(name: string = '') {
-    return new PropertyValue<V>(true, undefined, undefined, name)
+type SourceFrame = {
+  filename: string
+  lineNumber: number
+  methodName: string
+}
+
+class PropertyValue<V> {
+  static loading<V>() {
+    return new PropertyValue<V>(true, undefined, undefined)
   }
 
-  static failure<V>(failure: Error, name: string = '') {
-    return new PropertyValue<V>(false, undefined, failure, name)
+  static failure<V>(failure: Error) {
+    return new PropertyValue<V>(false, undefined, failure)
   }
 
-  static value<V>(value: V, name: string = '') {
-    return new PropertyValue<V>(false, value, undefined, name)
+  static value<V>(value: V) {
+    return new PropertyValue<V>(false, value, undefined)
   }
 
   constructor(
-    public isLoading: boolean,
+    public isLoading: boolean = true,
     public value?: V,
-    public failure?: Error,
-    public name?: string
+    public failure?: Error
   ) {}
 
   toState() {
@@ -30,137 +37,127 @@ export class PropertyValue<V> {
     }
   }
 
-  map<V2>(fn: (input: V) => V2, name?: string): PropertyReturn<V2> {
-    const getter = () => {
-      if (this.isLoading) {
-        return PropertyValue.loading<V2>(name)
-      } else if (this.failure) {
-        return PropertyValue.failure<V2>(this.failure, name)
-      } else {
-        return PropertyValue.value<V2>(fn(this.value as V), name)
-      }
-    }
-
-    return makeFn(name, getter, [this])
+  public setLoading(): PropertyValue<V> {
+    return new PropertyValue(true)
   }
 
-  and<V2>(
-    property2: PropertyValue<V2>,
-    name?: string
-  ): PropertyReturn<[V, V2]> {
-    const getter = () => {
-      if (this.isLoading || property2.isLoading)
-        return PropertyValue.loading<[V, V2]>(name)
-      else if (this.failure)
-        return PropertyValue.failure<[V, V2]>(this.failure, name)
-      else if (property2.failure)
-        return PropertyValue.failure<[V, V2]>(property2.failure, name)
-      else
-        return PropertyValue.value<[V, V2]>([this.value, property2.value], name)
-    }
+  public setValue(value: V): PropertyValue<V> {
+    return new PropertyValue(false, value, undefined)
+  }
 
-    return makeFn(name, getter, [this, property2])
+  public setFailure(failure: Error): PropertyValue<V> {
+    return new PropertyValue(false, undefined, failure)
   }
 }
 
-class Property<V> {
+export class Property<V> {
   constructor(
     public propertyValue: PropertyValue<V>,
-    protected setProperty: (property: PropertyValue<V>) => void
+    public sources: SourceFrame[]
   ) {}
 
-  private isLoading = this.propertyValue.isLoading
-  private failure = this.propertyValue.failure
-  private value = this.propertyValue.value
+  public isLoading = this.propertyValue.isLoading
+  public failure = this.propertyValue.failure
+  public value = this.propertyValue.value
 
-  map<V2>(fn: (input: V) => V2, name?: string): PropertyReturn<V2> {
+  map<V2>(fn: (input: V) => V2): Property<V2> {
+    const err = parse(new Error().stack)
+    const sources: SourceFrame[] = [
+      {
+        filename: err[1].file,
+        methodName: err[0].methodName,
+        lineNumber: err[1].lineNumber,
+      },
+      ...this.sources,
+    ]
+
     const getter = () => {
       if (this.isLoading) {
-        return PropertyValue.loading<V2>(name)
+        return PropertyValue.loading<V2>()
       } else if (this.failure) {
-        return PropertyValue.failure<V2>(this.failure, name)
+        return PropertyValue.failure<V2>(this.failure)
       } else {
-        return PropertyValue.value<V2>(fn(this.value as V), name)
+        return PropertyValue.value<V2>(fn(this.value as V))
       }
     }
 
-    return makeFn(name, getter, [this])
+    return new Property(getter(), sources)
   }
 
-  and<V2>(
-    property2: PropertyValue<V2>,
-    name?: string
-  ): PropertyReturn<[V, V2]> {
+  and<V2>(property2: Property<V2>): Property<[V, V2]> {
+    const err = parse(new Error().stack)
+    const sources: SourceFrame[] = [
+      {
+        filename: err[1].file,
+        methodName: err[0].methodName,
+        lineNumber: err[1].lineNumber,
+      },
+      ...this.sources,
+    ]
+
     const getter = () => {
       if (this.isLoading || property2.isLoading)
-        return PropertyValue.loading<[V, V2]>(name)
-      else if (this.failure)
-        return PropertyValue.failure<[V, V2]>(this.failure, name)
+        return PropertyValue.loading<[V, V2]>()
+      else if (this.failure) return PropertyValue.failure<[V, V2]>(this.failure)
       else if (property2.failure)
-        return PropertyValue.failure<[V, V2]>(property2.failure, name)
-      else
-        return PropertyValue.value<[V, V2]>([this.value, property2.value], name)
+        return PropertyValue.failure<[V, V2]>(property2.failure)
+      else return PropertyValue.value<[V, V2]>([this.value, property2.value])
     }
 
-    return makeFn(name, getter, [this, property2])
+    return new Property(getter(), sources)
   }
 
-  asState = [
-    this,
-    {
-      setValue: <V2 extends V>(value: V2) => {
-        this.setProperty(
-          new PropertyValue<V>(false, value, undefined, this.propertyValue.name)
-        )
+  useProperty = (): PropertyReturn<V> => {
+    const err = parse(new Error().stack)
+    const sources: SourceFrame[] = [
+      {
+        filename: err[1].file,
+        methodName: err[0].methodName,
+        lineNumber: err[1].lineNumber,
       },
+      ...this.sources,
+    ]
 
-      setLoading: () => {
-        this.setProperty(
-          new PropertyValue<V>(
-            true,
-            undefined,
-            undefined,
-            this.propertyValue.name
-          )
-        )
-      },
+    return makeFn(sources, () => this.propertyValue, [this.propertyValue])
+  }
 
-      setFailure: (failure: Error) => {
-        this.setProperty(
-          new PropertyValue<V>(
-            false,
-            undefined,
-            failure,
-            this.propertyValue.name
-          )
-        )
+  static of<V>(value?: V | Error): Property<V> {
+    const err = parse(new Error().stack)
+    const sources: SourceFrame[] = [
+      {
+        filename: err[1].file,
+        methodName: err[0].methodName,
+        lineNumber: err[1].lineNumber,
       },
-    },
-  ]
+    ]
+
+    const prop = _.isUndefined(value)
+      ? PropertyValue.loading<V>()
+      : _.isError(value)
+      ? PropertyValue.failure<V>(value)
+      : PropertyValue.value<V>(value)
+
+    return new Property<V>(prop, sources)
+  }
 }
 
 class PropertyFN<V> {
-  constructor(
-    protected setProperty: (property: PropertyValue<V>) => void,
-    protected name: string
-  ) {}
+  constructor(protected setProperty: (property: PropertyValue<V>) => void) {}
 
   setValue<V2 extends V>(value: V2) {
-    this.setProperty(new PropertyValue<V>(false, value, undefined, this.name))
+    this.setProperty(new PropertyValue<V>(false, value, undefined))
   }
 
   setLoading() {
-    this.setProperty(
-      new PropertyValue<V>(true, undefined, undefined, this.name)
-    )
+    this.setProperty(new PropertyValue<V>(true, undefined, undefined))
   }
 
   setFailure(failure: Error) {
-    this.setProperty(new PropertyValue<V>(false, undefined, failure, this.name))
+    this.setProperty(new PropertyValue<V>(false, undefined, failure))
   }
 }
 
-type PropertyReturn<V> = [property: PropertyValue<V>, fn: PropertyFN<V>]
+type PropertyReturn<V> = [property: Property<V>, fn: PropertyFN<V>]
 
 type VersionData<V> = {
   data: PropertyValue<V>
@@ -172,7 +169,7 @@ type DependencyData<V> = VersionData<V> & {
 }
 
 function makeFn<V>(
-  name: string = 'noname',
+  sources: SourceFrame[],
   _property: () => PropertyValue<V>,
   dependencies: PropertyValue<any>[]
 ): PropertyReturn<V> {
@@ -193,29 +190,34 @@ function makeFn<V>(
   )
   if (!equal) {
     const version = Math.max(state.version, dependencyRef.current.version) + 1
-    dependencyRef.current = { dependencies, version, data: _property() }
+    dependencyRef.current = {
+      dependencies,
+      version,
+      data: _property(),
+    }
   }
 
   const property =
     dependencyRef.current.version > state.version
-      ? dependencyRef.current.data
-      : state.data
+      ? new Property(dependencyRef.current.data, sources)
+      : new Property(state.data, sources)
 
   const setProperty = (property: PropertyValue<V>) => {
     const version = Math.max(state.version, dependencyRef.current.version) + 1
     setState({ data: property, version })
   }
 
-  const fn = new PropertyFN(setProperty, name)
+  const fn = new PropertyFN(setProperty)
   return [property, fn]
 }
 
-export function useProperty<V>(
-  _property?: V | PropertyValue<V>,
-  name?: string
-): Property<V> {
-  throw niy()
-}
+// export function useProperty<V>(value?: V): PropertyReturn<V> {
+//   const sources = [parse(new Error().stack)[0]]
+
+//   const prop = PropertyValue.value(value)
+
+//   return makeFn(sources, () => prop, [prop])
+// }
 
 // interface IUseProperty {
 //   <V>(_property?: V | PropertyValue<V>, name?: string): PropertyReturn<V>

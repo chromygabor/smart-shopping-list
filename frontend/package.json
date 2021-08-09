@@ -21,6 +21,7 @@
     "react-dom": "latest",
     "react-hook-form": "^7.10.1",
     "react-json-view": "^1.21.3",
+    "stacktrace-parser": "^0.1.10",
     "underscore": "^1.13.1"
   },
   "scripts": {

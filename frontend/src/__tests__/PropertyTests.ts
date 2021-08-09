@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react-hooks'
 import { useRef } from 'react'
-import { useProperty } from '../common/Property'
+import { Property } from '../common/Property'
+import { parse } from 'stacktrace-parser'
 
 // describe('Property', () => {
 //   it('should return appropiate type depending on input', () => {
@@ -81,12 +82,11 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number>(5, 'test').asState
+        const [state1, state1Fn] = Property.of<number>(5).useProperty()
 
-        const [state2, state2Fn] = state1.map(
-          (item) => 'kukucs: ' + item * 2,
-          'mapped'
-        )
+        const [state2, state2Fn] = state1
+          .map((item) => 'kukucs: ' + item * 2)
+          .useProperty()
 
         return {
           state1,
@@ -135,12 +135,11 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number>(5, 'test').asState
+        const [state1, state1Fn] = Property.of<number>(5).useProperty()
 
-        const [state2, state2Fn] = state1.map(
-          (item) => 'kukucs: ' + item * 2,
-          'mapped'
-        )
+        const [state2, state2Fn] = state1
+          .map((item) => 'kukucs: ' + item * 2)
+          .useProperty()
 
         return {
           state1,
@@ -186,12 +185,11 @@ describe('useProperty', () => {
       const { result } = renderHook(() => {
         const counter = useRef(0)
         counter.current = counter.current + 1
-        const [state1, state1Fn] = useProperty<number>(5, 'test').asState
+        const [state1, state1Fn] = Property.of<number>(5).useProperty()
 
-        const [state2, state2Fn] = state1.map(
-          (item) => 'kukucs: ' + item * 2,
-          'test'
-        )
+        const [state2, state2Fn] = state1
+          .map((item) => 'kukucs: ' + item * 2)
+          .useProperty()
 
         return {
           state1,
@@ -240,10 +238,10 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number>(5, 'l-l').asState
-        const [state2, state2Fn] = useProperty<number>(10, 'l-r').asState
+        const [state1, state1Fn] = Property.of<number>(5).useProperty()
+        const [state2, state2Fn] = Property.of<number>(10).useProperty()
 
-        const [state3, state3Fn] = state1.and(state2, 'l-and')
+        const [state3, state3Fn] = state1.and(state2).useProperty()
 
         return {
           state1,
@@ -290,10 +288,10 @@ describe('useProperty', () => {
         const counter = useRef(0)
         counter.current = counter.current + 1
 
-        const [state1, state1Fn] = useProperty<number>(5, 'rl').asState
-        const [state2, state2Fn] = useProperty<number>(10, 'rr').asState
+        const [state1, state1Fn] = Property.of<number>(5).useProperty()
+        const [state2, state2Fn] = Property.of<number>(10).useProperty()
 
-        const [state3, state3Fn] = state1.and(state2, 'r-and')
+        const [state3, state3Fn] = state1.and(state2).useProperty()
 
         return {
           state1,
@@ -333,6 +331,54 @@ describe('useProperty', () => {
       expect(result.current.state3.failure.message).toBe('test')
 
       expect(result.current.counter).toBe(4)
+    })
+    it('should ', () => {
+      const { result } = renderHook(() => {
+        const counter = useRef(0)
+        counter.current = counter.current + 1
+
+        const [state1, state1Fn] = Property.of<number>(5).useProperty()
+
+        const [state2, state2Fn] = state1.useProperty()
+
+        const state3 = state2.map((item) => {
+          return item * 2
+        })
+
+        return {
+          state1,
+          state1Fn,
+          state2,
+          state2Fn,
+          state3,
+          counter: counter.current,
+        }
+      })
+
+      console.log(result.current.state1.sources)
+
+      expect(result.current.state1.value).toBe(5)
+      expect(result.current.state2.value).toBe(5)
+      expect(result.current.state3.value).toBe(10)
+      expect(result.current.counter).toBe(1)
+
+      act(() => {
+        result.current.state1Fn.setValue(10)
+      })
+
+      expect(result.current.state1.value).toBe(10)
+      expect(result.current.state2.value).toBe(10)
+      expect(result.current.state3.value).toBe(20)
+      expect(result.current.counter).toBe(2)
+
+      act(() => {
+        result.current.state2Fn.setValue(20)
+      })
+
+      expect(result.current.state1.value).toBe(10)
+      expect(result.current.state2.value).toBe(20)
+      expect(result.current.state3.value).toBe(40)
+      expect(result.current.counter).toBe(3)
     })
   })
 })
